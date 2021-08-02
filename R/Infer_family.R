@@ -205,8 +205,8 @@ jaccard <- function(a, b) {
 inferSpotlight <- function(spata.obj, seurat.obj, feature){
   
   #Set up Seurat features
-  seurat.obj <- Seurat::SetIdent(caf.object.spotlight, value=feature)
-  marker.spotlight <- Seurat::FindAllMarkers(caf.object.spotlight)
+  seurat.obj <- Seurat::SetIdent(seurat.obj, value=feature)
+  marker.spotlight <- Seurat::FindAllMarkers(seurat.obj)
   
   #Run Spotlight
   spot <- 
