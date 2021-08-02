@@ -74,3 +74,75 @@ run.SNN.stability <- function(object,
 
 
 
+#' @title  MergeInferCNVSeurat
+#' @author Dieter Henrik Heiland
+#' @description MergeInferCNVSeurat
+#' @param object Seurat Object
+#' @param results The InferCNV results folder
+#' @inherit 
+#' @return 
+#' @examples 
+#' @export
+
+MergeInferCNVSeurat <- function(object, results=getwd()){
+  
+  library(infercnv)
+  library(SPATA2)
+  library(tidyverse)
+  
+  infer.obj <- readRDS(stringr::str_c(results, "/infercnv-obj.RDS"))
+  gene_pos_df <-
+    infer.obj@gene_order %>% 
+    dplyr::select(chr, start,stop) %>% 
+    as.data.frame() %>% 
+    tibble::rownames_to_column("hgnc_symbol") %>% 
+    dplyr::rename(chromosome_name:=chr)
+  
+  result_dir <-stringr::str_c(results, "/infercnv.observations.txt")
+  results <- utils::read.table(result_dir)
+  barcodes <- base::colnames(results)
+  confuns::give_feedback(msg = "Summarizing cnv-results by chromosome.")
+  
+  
+  
+  
+  # join cnv results (per gene) with chromosome positions and summarize by chromosome
+  cnv_prefix="Chr"
+  
+  ordered_cnv_df <-
+    base::as.data.frame(results) %>%
+    tibble::rownames_to_column("hgnc_symbol") %>%
+    dplyr::left_join(., gene_pos_df, by = "hgnc_symbol") %>%
+    dplyr::group_by(chromosome_name) %>%
+    dplyr::select(chromosome_name, dplyr::any_of(barcodes)) %>%
+    dplyr::summarise_all(base::mean) %>%
+    dplyr::mutate(Chr = stringr::str_c(cnv_prefix, chromosome_name)) %>%
+    dplyr::select(Chr, dplyr::everything()) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-chromosome_name)
+  
+  cnames <- c("barcodes", ordered_cnv_df$Chr)
+  
+  ordered_cnv_df2 <-
+    dplyr::select(ordered_cnv_df, -Chr) %>%
+    base::t() %>%
+    base::as.data.frame() %>%
+    tibble::rownames_to_column(var = "barcodes") %>%
+    magrittr::set_colnames(value = cnames) %>%
+    dplyr::mutate(barcodes = stringr::str_replace_all(string = barcodes, pattern = "\\.", replacement = "-")) %>%
+    dplyr::mutate(dplyr::across(dplyr::starts_with(match = cnv_prefix), .fns = base::as.numeric)) %>%
+    tibble::as_tibble()
+  
+  # add results to spata object
+  confuns::give_feedback(msg = "Adding results to the Seurat object's feature data.")
+  
+  # feature variables
+  
+  join <- left_join(object@meta.data %>% rownames_to_column("barcodes") , ordered_cnv_df2 , by="barcodes")
+  object@meta.data <- cbind(object@meta.data, join[,ordered_cnv_df$Chr])
+  
+  return(object)
+  
+}
+
+

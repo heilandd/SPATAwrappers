@@ -180,5 +180,22 @@ inferSpatial.plot <- function(object,feature, plot=T){
   
 }
 
+#' @title  jaccard
+#' @author Dieter Henrik Heiland
+#' @description jaccard
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+
+jaccard <- function(a, b) {
+  intersection = length(intersect(a, b))
+  union = length(a) + length(b) - intersection
+  return (intersection/union)
+}
+
+
+
 
 
