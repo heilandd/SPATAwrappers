@@ -144,7 +144,7 @@ inferSpatial.ac <- function(object,feature){
     
     segment_c <-plotrix::draw.circle(x=tissue.pos$x[xx], 
                                      y=tissue.pos$y[xx],
-                                     radius=5*0.4) 
+                                     radius=5*2) 
     
     segment <- as.data.frame(do.call(cbind, segment_c))
     
@@ -169,9 +169,11 @@ inferSpatial.ac <- function(object,feature){
   message(paste0(Sys.time(), "  Computing the Moran’s I statistic"))
   
   stat <- purrr::map(.x=feature, .f=function(x){
-    model <- moran.test(SrDf@data[,x],lw)
+    print(x)
+    model <- spdep::moran.test(SrDf@data[,x],lw, zero.policy=T)
     model$estimate[[1]]
   })
+  
   names(stat) <- feature
   
   return(stat)
@@ -198,16 +200,16 @@ inferSpatial.plot <- function(object,feature, plot=T){
   
   # fill data 
   cor.mat$value <- pbmcapply::pbmclapply(1:nrow(cor.mat), function(i){
-    cor.out <- spatial.mc(P1=SPATA2::getFeatureDf(object) %>% pull(cor.mat[i,1]),
-                          P2=SPATA2::getFeatureDf(object) %>% pull(cor.mat[i,2]),
-                          n=200)
+    cor.out <- inferSpatial.mc(P1=SPATA2::getFeatureDf(object) %>% pull(cor.mat[i,1]),
+                               P2=SPATA2::getFeatureDf(object) %>% pull(cor.mat[i,2]),
+                               n=200)
     return(cor.out$Cor)
     
   }, mc.cores = 8) %>% unlist()
   
   message(paste0(Sys.time(), "  Run Auto Corelation analysis"))
   
-  cor.Auto <- spatial.ac(object, feature)
+  cor.Auto <- SPATAwrappers::inferSpatial.ac(object, feature)
   cor.Auto <- as.data.frame(do.call(rbind,cor.Auto)) %>% 
     tibble::rownames_to_column("Var2") %>% 
     mutate(Var1="Autocorelation",
