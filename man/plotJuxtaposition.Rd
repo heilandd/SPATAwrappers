@@ -4,7 +4,7 @@
 \alias{plotJuxtaposition}
 \title{plotJuxtaposition}
 \usage{
-plotJuxtaposition(dist, points = T, span)
+plotJuxtaposition(dist, points = T, span = 0.2, quantile.cor = T, q = 0.1)
 }
 \value{
 
