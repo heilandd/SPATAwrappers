@@ -195,6 +195,45 @@ jaccard <- function(a, b) {
   return (intersection/union)
 }
 
+#' @title  jaccard
+#' @author Dieter Henrik Heiland
+#' @description jaccard
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+inferSpotlight <- function(spata.obj, seurat.obj, feature){
+  
+  #Set up Seurat features
+  seurat.obj <- Seurat::SetIdent(caf.object.spotlight, value=feature)
+  marker.spotlight <- Seurat::FindAllMarkers(caf.object.spotlight)
+  
+  #Run Spotlight
+  spot <- 
+    SPOTlight::spotlight_deconvolution(se_sc= seurat.obj,
+                                       counts_spatial=SPATA2::getCountMatrix(spata.obj),
+                                       clust_vr=feature,
+                                       cluster_markers=marker.spotlight)
+  
+  
+  # Transfer back
+  spata.obj <- 
+    SPATA2::addFeatures(spata.obj, 
+                        feature_df = spot[[2]] %>% as.data.frame() %>% dplyr::mutate(barcodes=SPATA2::getBarcodes(spata.obj)) %>% dplyr::select(barcodes, 1,2)
+                        )
+  
+  
+  return(spata.obj)
+  
+  
+}
+
+
+
+
+
+
 
 
 
