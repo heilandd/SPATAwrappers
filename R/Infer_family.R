@@ -133,7 +133,7 @@ inferSpatial.mc <- function(P1,P2, n = 599){
 #' @examples 
 #' 
 #' @export
-inferSpatial.ac <- function(object,feature){
+inferSpatial.ac <- function(object,feature, radius=5){
   
   message(paste0(Sys.time(), "  Start Autocorrelation"))
   
@@ -144,7 +144,7 @@ inferSpatial.ac <- function(object,feature){
     
     segment_c <-plotrix::draw.circle(x=tissue.pos$x[xx], 
                                      y=tissue.pos$y[xx],
-                                     radius=5*2) 
+                                     radius=radius*2) 
     
     segment <- as.data.frame(do.call(cbind, segment_c))
     
@@ -189,7 +189,7 @@ inferSpatial.ac <- function(object,feature){
 #' @examples 
 #' 
 #' @export
-inferSpatial.plot <- function(object,feature, plot=T){
+inferSpatial.plot <- function(object,feature, plot=T, radius=5){
   
   
   #Run analysis 
@@ -209,7 +209,7 @@ inferSpatial.plot <- function(object,feature, plot=T){
   
   message(paste0(Sys.time(), "  Run Auto Corelation analysis"))
   
-  cor.Auto <- SPATAwrappers::inferSpatial.ac(object, feature)
+  cor.Auto <- SPATAwrappers::inferSpatial.ac(object, feature,radius=radius)
   cor.Auto <- as.data.frame(do.call(rbind,cor.Auto)) %>% 
     tibble::rownames_to_column("Var2") %>% 
     mutate(Var1="Autocorelation",

@@ -4,7 +4,7 @@
 \alias{inferSpatial.ac}
 \title{inferSpatial.mc}
 \usage{
-inferSpatial.ac(object, feature)
+inferSpatial.ac(object, feature, radius = 5)
 }
 \value{
 

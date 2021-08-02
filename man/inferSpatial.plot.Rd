@@ -4,7 +4,7 @@
 \alias{inferSpatial.plot}
 \title{inferSpatial.mc}
 \usage{
-inferSpatial.plot(object, feature, plot = T)
+inferSpatial.plot(object, feature, plot = T, radius = 5)
 }
 \value{
 
