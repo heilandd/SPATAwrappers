@@ -195,13 +195,12 @@ jaccard <- function(a, b) {
   return (intersection/union)
 }
 
-#' @title  jaccard
+#' @title  inferSpotlight
 #' @author Dieter Henrik Heiland
-#' @description jaccard
+#' @description inferSpotlight
 #' @inherit 
 #' @return 
 #' @examples 
-#' 
 #' @export
 inferSpotlight <- function(spata.obj, seurat.obj, feature){
   
