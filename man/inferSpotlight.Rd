@@ -4,7 +4,7 @@
 \alias{inferSpotlight}
 \title{inferSpotlight}
 \usage{
-inferSpotlight(spata.obj, seurat.obj, feature)
+inferSpotlight(spata.obj, seurat.obj, feature, marker.genes = NULL)
 }
 \value{
 

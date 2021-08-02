@@ -250,11 +250,14 @@ jaccard <- function(a, b) {
 #' @return 
 #' @examples 
 #' @export
-inferSpotlight <- function(spata.obj, seurat.obj, feature){
+inferSpotlight <- function(spata.obj, seurat.obj, feature, marker.genes=NULL){
   
   #Set up Seurat features
   seurat.obj <- Seurat::SetIdent(seurat.obj, value=feature)
-  marker.spotlight <- Seurat::FindAllMarkers(seurat.obj)
+  if(is.null(marker.genes)){
+    marker.spotlight <- Seurat::FindAllMarkers(seurat.obj)
+  }else{marker.spotlight <- marker.genes}
+  
   
   #Run Spotlight
   spot <- 
