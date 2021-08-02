@@ -8,12 +8,15 @@
 #' @export
 
 
-plotJuxtaposition <- function(dist, points=T, span=0.2, quantile.cor=T, q = 0.1){
+plotJuxtaposition <- function(dist, points=T, span=0.2,rescale=F, quantile.cor=T, q = 0.1){
   
   if(quantile.cor==T){
     dist <- NFCN2::getCleaned(dist, feat = "aligned.target",q = q)
   }
   
+  if(rescale==T){
+    dist$aligned.target <- scales::rescale(dist$aligned.target, c(0,1))
+  }
   
   p=ggplot2::ggplot()+ ggplot2::theme_classic()
   if(points==T){
