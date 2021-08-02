@@ -2,7 +2,7 @@
 % Please edit documentation in R/Infer_family.R
 \name{inferSpotlight}
 \alias{inferSpotlight}
-\title{jaccard}
+\title{inferSpotlight}
 \usage{
 inferSpotlight(spata.obj, seurat.obj, feature)
 }
@@ -10,10 +10,7 @@ inferSpotlight(spata.obj, seurat.obj, feature)
 
 }
 \description{
-jaccard
-}
-\examples{
-
+inferSpotlight
 }
 \author{
 Dieter Henrik Heiland
