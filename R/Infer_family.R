@@ -219,7 +219,8 @@ inferSpotlight <- function(spata.obj, seurat.obj, feature){
   # Transfer back
   spata.obj <- 
     SPATA2::addFeatures(spata.obj, 
-                        feature_df = spot[[2]] %>% as.data.frame() %>% dplyr::mutate(barcodes=SPATA2::getBarcodes(spata.obj)) %>% dplyr::select(barcodes, 1,2)
+                        feature_df = spot[[2]] %>% as.data.frame() %>% dplyr::mutate(barcodes=SPATA2::getBarcodes(spata.obj)) %>% dplyr::select(barcodes, 1,2),,
+                        overwrite = T
                         )
   
   
