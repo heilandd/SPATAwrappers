@@ -210,6 +210,7 @@ inferSpatial.plot <- function(object,feature, plot=T, radius=5){
   message(paste0(Sys.time(), "  Run Auto Corelation analysis"))
   
   cor.Auto <- SPATAwrappers::inferSpatial.ac(object, feature,radius=radius)
+  
   cor.Auto <- as.data.frame(do.call(rbind,cor.Auto)) %>% 
     tibble::rownames_to_column("Var2") %>% 
     mutate(Var1="Autocorelation",
@@ -222,7 +223,7 @@ inferSpatial.plot <- function(object,feature, plot=T, radius=5){
   message(paste0(Sys.time(), " Plotting "))
   
   if(plot==T){
-    corrplot::corrplot.mixed(t(reshape2::acast(cor.mat, Var1~Var2, value.var="value")))
+    corrplot::corrplot(t(reshape2::acast(cor.mat, Var1~Var2, value.var="value")), is.corr = F)
   }
   
   
