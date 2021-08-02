@@ -4,7 +4,20 @@
 \alias{inferJuxtaposition}
 \title{Juxtaposition in stRNA-seq}
 \usage{
-inferJuxtaposition(object, genset = NULL, feature = NULL)
+inferJuxtaposition(
+  object,
+  source,
+  source.type = "feature",
+  target,
+  target.type = "feature"
+)
+}
+\arguments{
+\item{source}{Variable define basline of state from which the distance is computet}
+
+\item{source.type}{and target.type can be "feature", "gene" or "geneset"}
+
+\item{target}{Variable "to" for distance computation}
 }
 \value{
 

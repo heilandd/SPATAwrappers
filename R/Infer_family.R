@@ -1,37 +1,85 @@
 #' @title  Juxtaposition in stRNA-seq
 #' @author Dieter Henrik Heiland
 #' @description Juxtaposition in stRNA-seq
+#' @param source Variable define basline of state from which the distance is computet
+#' @param target Variable "to" for distance computation
+#' @param source.type and target.type can be "feature", "gene" or "geneset"
 #' @inherit 
 #' @return 
 #' @examples 
 #' 
 #' @export
 
-inferJuxtaposition <- function(object, genset=NULL, feature=NULL){
+inferJuxtaposition <- function(object, 
+                               source,
+                               source.type="feature",
+                               target,
+                               target.type="feature"){
+  
+  ###From
+  
+  if(source.type=="feature"){from <- 
+    object %>% 
+    SPATA2::joinWithFeatures(features = source) %>% 
+    dplyr::mutate(source=SPATA2::hlpr_normalize_vctr(!!sym(source)) ) %>% 
+    dplyr::arrange(dplyr::desc(source))}
+  
+  if(source.type=="gene"){from <- 
+    object %>% 
+    SPATA2::joinWithGenes(genes = source, average_genes = T) %>% 
+    dplyr::mutate(source=SPATA2::hlpr_normalize_vctr(mean_genes) ) %>% 
+    dplyr::arrange(dplyr::desc(source))}
+  
+  if(source.type=="geneset"){from <- 
+    object %>% 
+    SPATA2::joinWithGeneSets(gene_sets = source) %>% 
+    dplyr::mutate(source=SPATA2::hlpr_normalize_vctr(!!sym(source)) ) %>% 
+    dplyr::arrange(dplyr::desc(source))}
+  
+  #### to
   
   
-  #Check input
-  if(is.null(genset) & is.null(feature)) stop ("No feature selected")
-  if(is.null(genset) & length(feature)!=2) stop ("Not enough feature selected: First source second target")
-  if(is.null(feature) & length(genset)!=2) stop ("Not enough feature selected: First source second target")
+  if(target.type=="feature"){to <- 
+    object %>% 
+    SPATA2::joinWithFeatures(features = target) %>% 
+    dplyr::mutate(target=SPATA2::hlpr_normalize_vctr(!!sym(target)) ) %>% 
+    dplyr::arrange(dplyr::desc(target))}
   
-  #Select Modus
-  if(length(genset)==1 & length(feature)==1){
-    
-    #from GS to Feature
-    
-  }
-  if(length(genset)==2 ){
-    
-    #from GS to GS
-    
-  }
-  if(length(feature)==2){
-    
-    #from Feature to Feature
-    
-  }
+  if(target.type=="gene"){to <- 
+    object %>% 
+    SPATA2::joinWithGenes(genes = target, average_genes = T) %>% 
+    dplyr::mutate(target=SPATA2::hlpr_normalize_vctr(mean_genes) ) %>% 
+    dplyr::arrange(dplyr::desc(target))}
   
+  if(target.type=="geneset"){to <- 
+    object %>% 
+    SPATA2::joinWithGeneSets(gene_sets = target) %>% 
+    dplyr::mutate(target=SPATA2::hlpr_normalize_vctr(!!sym(target)) ) %>% 
+    dplyr::arrange(dplyr::desc(target))}
+  
+  
+  to <- 
+    to %>% 
+    dplyr::select(barcodes, target, x, y) %>% 
+    dplyr::rename("x.to":=x) %>% 
+    dplyr::rename("y.to":=y) %>% 
+    dplyr::mutate(aligned.target=target)
+  
+  from <- 
+    from %>% 
+    dplyr::select(barcodes, source, x, y) %>% 
+    dplyr::rename("x.from":=x) %>% 
+    dplyr::rename("y.from":=y)
+
+  dist <- 
+    cbind(from, to %>% dplyr::select(-aligned.target)) %>% 
+    dplyr::select(-5) %>% 
+    dplyr::mutate(dist=SPATAwrappers::getDistance(.$x.from, .$y.from,.$x.to, .$y.to )) %>% 
+    dplyr::left_join(., to %>% dplyr::select(barcodes, aligned.target), by="barcodes")
+  
+  
+  
+  return(dist)
   
   
   
@@ -214,6 +262,7 @@ inferSpotlight <- function(spata.obj, seurat.obj, feature){
                                        counts_spatial=SPATA2::getCountMatrix(spata.obj),
                                        clust_vr=feature,
                                        cluster_markers=marker.spotlight)
+  
   
   
   # Transfer back
