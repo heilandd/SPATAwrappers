@@ -4,7 +4,7 @@
 \alias{MergeInferCNVSeurat}
 \title{MergeInferCNVSeurat}
 \usage{
-MergeInferCNVSeurat(object, results = getwd())
+MergeInferCNVSeurat(object, results = getwd(), remove.prefix = NULL)
 }
 \arguments{
 \item{object}{Seurat Object}

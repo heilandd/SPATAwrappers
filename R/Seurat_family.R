@@ -84,7 +84,7 @@ run.SNN.stability <- function(object,
 #' @examples 
 #' @export
 
-MergeInferCNVSeurat <- function(object, results=getwd()){
+MergeInferCNVSeurat <- function(object, results=getwd(), remove.prefix=NULL){
   
   library(infercnv)
   library(SPATA2)
@@ -101,6 +101,9 @@ MergeInferCNVSeurat <- function(object, results=getwd()){
   result_dir <-stringr::str_c(results, "/infercnv.observations.txt")
   results <- utils::read.table(result_dir)
   barcodes <- base::colnames(results)
+  if(!is.null(remove.prefix)){barcodes <- stringr::str_remove_all(barcodes, "X");colnames(results) <-barcodes }
+  
+  
   confuns::give_feedback(msg = "Summarizing cnv-results by chromosome.")
   
   
@@ -138,7 +141,7 @@ MergeInferCNVSeurat <- function(object, results=getwd()){
   
   # feature variables
   
-  join <- left_join(object@meta.data %>% rownames_to_column("barcodes") , ordered_cnv_df2 , by="barcodes")
+  join <- dplyr::left_join(object@meta.data %>% tibble::rownames_to_column("barcodes") , ordered_cnv_df2 , by="barcodes")
   object@meta.data <- cbind(object@meta.data, join[,ordered_cnv_df$Chr])
   
   return(object)
