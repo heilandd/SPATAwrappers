@@ -9,8 +9,10 @@ plotCNV(
   across = NULL,
   across_subset = NULL,
   relevel = NULL,
+  smooth_span = 0.08,
+  nrow = NULL,
+  ncol = NULL,
   clr = "blue",
-  ...,
   of_sample = NA,
   verbose = NULL
 )

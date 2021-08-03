@@ -176,17 +176,18 @@ plotCNV <- function(object,
                     across = NULL,
                     across_subset = NULL,
                     relevel = NULL,
+                    smooth_span = 0.08,
+                    nrow = NULL,
+                    ncol = NULL,
                     clr = "blue",
-                    ...,
                     of_sample = NA,
                     verbose = NULL
 ){
   
-
+  if(is.null(object@assays$CNV)) stop("No CNV assay stored in Seurat object, call ::MergeInferCNVSeurat ")
   
   # cnv results
-  cnv_results <- getCnvResults(object, of_sample = of_sample)
-  
+  cnv_results <- object@assays$CNV
   cnv_data <- cnv_results$cnv_mtr
   
   if(base::is.null(across)){
@@ -237,9 +238,9 @@ plotCNV <- function(object,
       base::as.data.frame(cnv_data) %>%
       base::t() %>%
       base::as.data.frame() %>%
-      tibble::rownames_to_column(var = "barcodes") %>%
-      joinWith(object = object, spata_df = ., features = across) %>%
-      confuns::check_across_subset(df = ., across = across, across.subset = across_subset, relevel = relevel) %>%
+      tibble::rownames_to_column(var = "barcodes") %>% 
+      dplyr::left_join(., object@meta.data %>% as.data.frame() %>% tibble::rownames_to_column("barcodes") %>% select(barcodes, {{across}}), by="barcodes") %>% 
+      confuns::check_across_subset(df = ., across = across, across.subset = across_subset, relevel = relevel) %>% 
       tidyr::pivot_longer(
         cols = dplyr::all_of(gene_names),
         names_to = "hgnc_symbol",
@@ -259,7 +260,7 @@ plotCNV <- function(object,
       ) %>%
       dplyr::ungroup() %>%
       dplyr::group_by(!!rlang::sym(x = across)) %>%
-      dplyr::mutate(x_axis = dplyr::row_number())
+      dplyr::mutate(x_axis = dplyr::row_number(),across = !!rlang::sym(across))
     
     line_df <-
       dplyr::count(x = summarized_df, chromosome_name) %>%
@@ -272,22 +273,16 @@ plotCNV <- function(object,
       )  %>%
       tidyr::drop_na()
     
-    final_plot <-
-      ggplot2::ggplot(data = summarized_df, mapping = ggplot2::aes(x = x_axis, y = cnv_mean)) +
-      ggplot2::geom_smooth(method = "loess", formula = y ~ x, span = 0.08, se = FALSE, color = clr) +
-      ggplot2::geom_ribbon(
-        mapping = ggplot2::aes(ymin = cnv_mean - cnv_sd, ymax = cnv_mean + cnv_sd),
-        alpha = 0.2
-      ) +
-      ggplot2::geom_vline(
-        data = line_df,
-        mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5
-      ) +
-      ggplot2::facet_wrap(facets = ~ Tumor.cells.bin , ...) +
-      ggplot2::theme_classic() +
-      ggplot2::theme(strip.background = ggplot2::element_blank()) +
-      ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) +
-      ggplot2::labs(x = "Chromosomes", y = "CNV-Results")
+
+    final_plot <- 
+      ggplot2::ggplot(data = summarized_df, mapping = ggplot2::aes(x = x_axis, y = cnv_mean)) + 
+      ggplot2::geom_smooth(method = "loess", formula = y ~ x, span = smooth_span, se = FALSE, color = clr) + 
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(ymin = cnv_mean - cnv_sd, ymax = cnv_mean + cnv_sd), alpha = 0.2) + 
+      ggplot2::geom_vline(data = line_df, mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5) + 
+      ggplot2::facet_wrap( ~ across, nrow = nrow, ncol = ncol) + 
+      ggplot2::theme_classic() + 
+      ggplot2::theme(strip.background = ggplot2::element_blank()) + 
+      ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) + ggplot2::labs(x = "Chromosomes", y = "CNV-Results")
     
   }
   
@@ -296,3 +291,4 @@ plotCNV <- function(object,
   base::return(final_plot)
   
 }
+
