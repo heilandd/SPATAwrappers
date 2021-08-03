@@ -144,8 +144,155 @@ MergeInferCNVSeurat <- function(object, results=getwd(), remove.prefix=NULL){
   join <- dplyr::left_join(object@meta.data %>% tibble::rownames_to_column("barcodes") , ordered_cnv_df2 , by="barcodes")
   object@meta.data <- cbind(object@meta.data, join[,ordered_cnv_df$Chr])
   
+  # cnv matrix
+  base::colnames(results) <- stringr::str_replace_all(string = base::colnames(results), pattern = "\\.", replacement = "-")
+  cnv_mtr <- base::as.matrix(results)
+  
+  cnv_list <- list(prefix = cnv_prefix,
+                   gene_pos_df = gene_pos_df,
+                   cnv_df = ordered_cnv_df2,
+                   cnv_mtr = cnv_mtr,
+                   regions_df = SPATA2::cnv_regions_df
+  )
+  
+  
+  object@assays$CNV <- cnv_list
+  
   return(object)
   
 }
 
+#' @title  plotCNV
+#' @author Dieter Henrik Heiland
+#' @description plotCNV
+#' @param object Seurat Object
+#' @param results The InferCNV results folder
+#' @inherit 
+#' @return 
+#' @examples 
+#' @export
+#' 
+plotCNV <- function(object,
+                    across = NULL,
+                    across_subset = NULL,
+                    relevel = NULL,
+                    clr = "blue",
+                    ...,
+                    of_sample = NA,
+                    verbose = NULL
+){
+  
 
+  
+  # cnv results
+  cnv_results <- getCnvResults(object, of_sample = of_sample)
+  
+  cnv_data <- cnv_results$cnv_mtr
+  
+  if(base::is.null(across)){
+    
+    confuns::give_feedback(msg = "Plotting cnv-results for whole sample.", verbose = verbose)
+    
+    plot_df <-
+      base::data.frame(
+        mean = base::apply(cnv_data, MARGIN = 1, FUN = stats::median),
+        sd = base::apply(cnv_data, MARGIN = 1, FUN = stats::sd)
+      ) %>%
+      tibble::rownames_to_column(var = "hgnc_symbol") %>%
+      dplyr::left_join(x = ., y = cnv_results$gene_pos_df, by = "hgnc_symbol") %>%
+      dplyr::mutate(
+        chromosome_name = base::factor(chromosome_name, levels = base::as.character(0:23))
+      ) %>%
+      tibble::as_tibble()
+    
+    line_df <-
+      dplyr::count(x = plot_df, chromosome_name) %>%
+      dplyr::mutate(
+        line_pos = base::cumsum(x = n),
+        line_lag = dplyr::lag(x = line_pos, default = 0) ,
+        label_breaks = (line_lag + line_pos) / 2
+      ) %>%
+      tidyr::drop_na()
+    
+    final_plot <-
+      ggplot2::ggplot(data = plot_df, mapping = ggplot2::aes(x = 1:base::nrow(plot_df), y = mean)) +
+      ggplot2::geom_smooth(method = "loess", formula = y ~ x, span = 0.08, se = FALSE, color = clr) +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(ymin = mean-sd, ymax = mean + sd),
+                           alpha = 0.2) +
+      ggplot2::geom_vline(data = line_df, mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5) +
+      ggplot2::theme_classic() +
+      ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) +
+      ggplot2::labs(x = "Chromosomes", y = "CNV-Results")
+    
+  } else if(base::is.character(across)){
+    
+    confuns::give_feedback(
+      msg = glue::glue("Plotting cnv-results across '{across}'. This might take a few moments."),
+      verbose = verbose
+    )
+    
+    gene_names <- base::rownames(cnv_data)
+    
+    prel_df <-
+      base::as.data.frame(cnv_data) %>%
+      base::t() %>%
+      base::as.data.frame() %>%
+      tibble::rownames_to_column(var = "barcodes") %>%
+      joinWith(object = object, spata_df = ., features = across) %>%
+      confuns::check_across_subset(df = ., across = across, across.subset = across_subset, relevel = relevel) %>%
+      tidyr::pivot_longer(
+        cols = dplyr::all_of(gene_names),
+        names_to = "hgnc_symbol",
+        values_to = "cnv_values"
+      ) %>%
+      dplyr::left_join(x = ., y = cnv_results$gene_pos_df, by = "hgnc_symbol") %>%
+      dplyr::mutate(
+        chromosome_name = base::factor(chromosome_name, levels = base::as.character(0:23))
+      ) %>%
+      tibble::as_tibble()
+    
+    summarized_df <-
+      dplyr::group_by(prel_df, !!rlang::sym(x = across), chromosome_name, hgnc_symbol) %>%
+      dplyr::summarise(
+        cnv_mean = stats::median(x = cnv_values, na.rm = TRUE),
+        cnv_sd = stats::sd(x = cnv_values, na.rm = TRUE)
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::group_by(!!rlang::sym(x = across)) %>%
+      dplyr::mutate(x_axis = dplyr::row_number())
+    
+    line_df <-
+      dplyr::count(x = summarized_df, chromosome_name) %>%
+      dplyr::ungroup() %>%
+      dplyr::group_by(!!rlang::sym(across)) %>%
+      dplyr::mutate(
+        line_pos = base::cumsum(x = n),
+        line_lag = dplyr::lag(x = line_pos, default = 0) ,
+        label_breaks = (line_lag + line_pos) / 2
+      )  %>%
+      tidyr::drop_na()
+    
+    final_plot <-
+      ggplot2::ggplot(data = summarized_df, mapping = ggplot2::aes(x = x_axis, y = cnv_mean)) +
+      ggplot2::geom_smooth(method = "loess", formula = y ~ x, span = 0.08, se = FALSE, color = clr) +
+      ggplot2::geom_ribbon(
+        mapping = ggplot2::aes(ymin = cnv_mean - cnv_sd, ymax = cnv_mean + cnv_sd),
+        alpha = 0.2
+      ) +
+      ggplot2::geom_vline(
+        data = line_df,
+        mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5
+      ) +
+      ggplot2::facet_wrap(facets = ~ Tumor.cells.bin , ...) +
+      ggplot2::theme_classic() +
+      ggplot2::theme(strip.background = ggplot2::element_blank()) +
+      ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) +
+      ggplot2::labs(x = "Chromosomes", y = "CNV-Results")
+    
+  }
+  
+  confuns::give_feedback(msg = "Done.", verbose = verbose)
+  
+  base::return(final_plot)
+  
+}
