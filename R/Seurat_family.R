@@ -217,8 +217,7 @@ plotCNV <- function(object,
     final_plot <-
       ggplot2::ggplot(data = plot_df, mapping = ggplot2::aes(x = 1:base::nrow(plot_df), y = mean)) +
       ggplot2::geom_smooth(method = "loess", formula = y ~ x, span = 0.08, se = FALSE, color = clr) +
-      ggplot2::geom_ribbon(mapping = ggplot2::aes(ymin = mean-sd, ymax = mean + sd),
-                           alpha = 0.2) +
+      ggplot2::geom_ribbon(mapping = ggplot2::aes(ymin = mean-sd, ymax = mean + sd),alpha = 0.2) +
       ggplot2::geom_vline(data = line_df, mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5) +
       ggplot2::theme_classic() +
       ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) +
