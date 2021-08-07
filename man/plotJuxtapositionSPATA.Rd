@@ -9,12 +9,15 @@ plotJuxtapositionSPATA(
   feature.source = "NPC",
   feature.target = "OPC",
   color_by = "seurat_clusters",
+  color = "black",
   pt_alpha = 0.3,
   lt.alpha = 0.1,
   pt_size = 6,
   lt.size = 0.2,
   thr = 0.8,
-  dist = 200
+  dist = 200,
+  data = F,
+  add = F
 )
 }
 \value{
