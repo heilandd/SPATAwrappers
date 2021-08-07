@@ -145,6 +145,7 @@ MergeInferCNVSeurat <- function(object, results=getwd(), remove.prefix=NULL){
   rownames(object@meta.data) <- object@meta.data$barcodes
   object@meta.data$barcodes=NULL
   
+  
   # cnv matrix
   base::colnames(results) <- stringr::str_replace_all(string = base::colnames(results), pattern = "\\.", replacement = "-")
   cnv_mtr <- base::as.matrix(results)
