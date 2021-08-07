@@ -142,6 +142,8 @@ MergeInferCNVSeurat <- function(object, results=getwd(), remove.prefix=NULL){
   # feature variables
   
   object@meta.data <- dplyr::left_join(object@meta.data %>% tibble::rownames_to_column("barcodes") , ordered_cnv_df2 , by="barcodes")
+  rownames(object@meta.data) <- object@meta.data$barcodes
+  object@meta.data$barcodes=NULL
   
   # cnv matrix
   base::colnames(results) <- stringr::str_replace_all(string = base::colnames(results), pattern = "\\.", replacement = "-")
