@@ -510,7 +510,7 @@ plotHeatmap <-  function(object,
         
         TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
         
-        p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=1, fill=!!sym(feature)))+geom_col(size=1)+ theme_void()
+        p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=1, fill=!!sym(feature)))+geom_col(size=size)+ theme_void()
         
         df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
         names(df.to.test) <- c("variable", "sample")
