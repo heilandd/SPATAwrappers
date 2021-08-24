@@ -266,7 +266,14 @@ plotVectorFields <- function(VF, parameter, pt.size=6,pt.alpha=0.8,color.extern=
 }
 
 
-
+#' @title  plotHeatmap
+#' @author Dieter Henrik Heiland
+#' @description plotHeatmap
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
 
 plotHeatmap <-  function(object, 
                          across=NULL,
