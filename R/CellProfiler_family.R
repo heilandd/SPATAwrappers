@@ -325,7 +325,37 @@ CellProfilerDistancePlot <- function(data,prefix, data.dist, exclude=NULL){
    
 }
 
-
+#' @title CellProfiler2Matlab 
+#' @author Dieter Henrik Heiland
+#' @description CellProfiler2Matlab 
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+#' 
+CellProfiler2Matlab <- function(mask_path, output_name){
+  
+  message("Load Cell Profiler Binary Mask")
+  
+  mask_path <- "~/Downloads/Segmentation_and_image_(Ca2+)/OrigBlue0001.tiff"
+  img <- EBImage::readImage(mask_path) %>% EBImage::imageData() %>% as.matrix()
+  
+  
+  
+  cell.annotation <- 
+    table(unique(img)) %>% 
+    as.data.frame() %>% 
+    dplyr::filter(Var1!=0) %>% 
+    dplyr::filter(Var1!=1) %>% 
+    dplyr::mutate(ID=1:nrow(.), ID=ID-1) %>% 
+    dplyr::mutate(Nr.pixle=Freq)
+  
+  for(i in 1:nrow(cell.annotation)){img[img==cell.annotation$Var1[i]] <- cell.annotation$ID[i] }
+  
+  R.matlab::writeMat(con=output_name, L=t(img))
+  
+}
 
 
 

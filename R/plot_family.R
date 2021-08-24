@@ -268,6 +268,763 @@ plotVectorFields <- function(VF, parameter, pt.size=6,pt.alpha=0.8,color.extern=
 
 
 
+plotHeatmap <-  function(object, 
+                         across=NULL,
+                         gs, 
+                         thr=c(0.8,0.7,0.7,0.6,0.5),
+                         nr.sample=NULL,
+                         plot.type=c("heatmap", "bar.comp", "point", "line", "stat"),
+                         size=2,
+                         sample.type="sample.type",
+                         color="black",
+                         alpha=1,
+                         feature=NULL){
+    
+    
+    sc.spata <- object
+    spata2_obj <-   object
+    
+    # Prepare data ------------------------------------------------------------
+    
+    # Check if GS is in the GS list of spata.obj
+    
+    if (length(c(intersect(gs, SPATA2::getGeneSets(sc.spata)) == gs ) %>% unique()) ==2 ) stop("Input Gene Set do not match gene Sets in spata object")
+    if (c(intersect(gs, SPATA2::getGeneSets(sc.spata)) == gs ) %>% unique() != T ) stop("Input Gene Set do not match gene Sets in spata object")
+    if(length(gs)!=length(thr)) stop("thr and gs do not match. Different length")
+    
+    # Run analysis of the basline gs
+    message(paste0(Sys.time(),  "  Run analysis and extract spots  "))
+    df <- SPATA2::joinWithGeneSets(spata2_obj, gene_sets = gs, smooth=F, ignore = T) 
+    
+    #Extract Freatures
+    if(!is.null(feature)){
+      # If not Element of the feature DF
+      if(!is.element(feature, c(SPATA2::getFeatureNames(spata2_obj) %>% as.character()))){
+        
+        # Test if feature is element of GS
+        if(is.element(feature, SPATA2::getGeneSets(spata2_obj) %>% as.character())){
+          gene_df=c(SPATA2::joinWithGeneSets(spata2_obj, gene_sets = feature) %>% dplyr::select(barcodes, {{feature}})) %>% as.data.frame() 
+          spata2_obj <- SPATA2::addFeatures(spata2_obj,gene_df, overwrite = T)}
+        
+        if(is.element(feature, SPATA2::getGenes(spata2_obj) %>% as.character())){
+          gene_df=c(SPATA2::joinWithGenes(spata2_obj, genes = feature) %>% dplyr::select(barcodes, {{feature}})) %>% as.data.frame() 
+          spata2_obj <- SPATA2::addFeatures(spata2_obj,gene_df, overwrite = T)}
+        
+        element <- c(is.element(feature, SPATA2::getGeneSets(spata2_obj) %>% as.character()),is.element(feature, SPATA2::getGenes(spata2_obj) %>% as.character()))
+        if(length(unique(element))==1) stop("feature not found")
+        
+      }}
+    
+    
+    # Run analysis ------------------------------------------------------------
+    
+    if(plot.type=="heatmap"){
+      
+      if(!is.null(across)){
+        split.f <- SPATA2::joinWithFeatures(spata2_obj, features = across) %>% dplyr::select(barcodes, !!sym(across))
+        df <- df %>% left_join(., split.f, by="barcodes")
+        
+        message(paste0(df %>% pull(!!sym(across)) %>% unique()))
+        
+        p <- purrr::map(.x=unique(df %>% pull(!!sym(across))), .f=function(sep.i){
+          
+          df <- df %>% filter(!!sym(across)==sep.i)
+          
+          # get thresholded Spots 
+          gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+            if(!is.null(nr.sample)){
+              df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+            }else{
+              df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+            }
+          })
+          
+          df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+          rownames(df.1) <- df$barcodes
+          
+          type <- purrr::map(.x=1:length(gs), .f=function(i){
+            rep(gs[i], length(gl.ls[[i]]))
+          }) %>% unlist()
+          
+          bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type) #%>% filter(dup==F)
+          bc <- bc.1$inp
+          df.2 <- df.1[bc, gs] %>% as.matrix() %>% t()
+          
+          col= colorRampPalette(rev(RColorBrewer::brewer.pal(9, "RdBu")))(200)
+          myBreaks <- c(seq(0, 0.59, length.out=25), 
+                        seq(0.6, 1, length.out=25))
+          
+          p=pheatmap::pheatmap(df.2 , 
+                               cluster_rows = F,
+                               cluster_cols = F, 
+                               show_colnames = F,
+                               color=col,
+                               silent=T)
+          
+          return(p)
+          
+          
+        })
+        
+        
+        
+      }else{
+        
+        # get thresholded Spots 
+        gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+          if(!is.null(nr.sample)){
+            df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+          }else{
+            df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+          }
+        })
+        
+        
+        
+        
+        df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+        rownames(df.1) <- df$barcodes
+        
+        type <- purrr::map(.x=1:length(gs), .f=function(i){
+          rep(gs[i], length(gl.ls[[i]]))
+        }) %>% unlist()
+        
+        bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type) #%>% filter(dup==F)
+        bc <- bc.1$inp
+        df.2 <- df.1[bc, gs] %>% as.matrix() %>% t()
+        
+        col= colorRampPalette(rev(RColorBrewer::brewer.pal(9, "RdBu")))(200)
+        myBreaks <- c(seq(0, 0.59, length.out=25), 
+                      seq(0.6, 1, length.out=25))
+        
+        p=pheatmap::pheatmap(df.2 , 
+                             cluster_rows = F,
+                             cluster_cols = F, 
+                             show_colnames = F,
+                             color=col,
+                             silent=T)
+        
+      }
+      
+      return(p)
+      
+    }
+    if(plot.type=="stat"){
+      
+      if(!is.null(across)){
+        split.f <- SPATA2::joinWithFeatures(spata2_obj, features = across) %>% dplyr::select(barcodes, !!sym(across))
+        df <- df %>% left_join(., split.f, by="barcodes")
+        
+        
+        p <- purrr::map(.x=unique(df %>% pull(!!sym(across))), .f=function(sep.i){
+          
+          df <- df %>% filter(!!sym(across)==sep.i)
+          
+          # get thresholded Spots 
+          # get thresholded Spots 
+          gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+            if(!is.null(nr.sample)){
+              df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+            }else{
+              df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+            }
+          })
+          df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+          rownames(df.1) <- df$barcodes
+          
+          type <- purrr::map(.x=1:length(gs), .f=function(i){
+            rep(gs[i], length(gl.ls[[i]]))
+          }) %>% unlist()
+          
+          bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+          
+          rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+          bc.1$module_score <- 0
+          scores <- df.1[bc.1$inp, gs]
+          
+          for(i in names(scores)[1:5]){
+            bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+              scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+          }
+          bc <- bc.1$inp
+          TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+          
+          TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+          
+          p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=1, fill=!!sym(feature)))+geom_col(size=1)+ theme_void()
+          
+          if( c(TC.cont %>% pull(!!sym(feature)) %>% class()) == "numeric"){
+            message("feature is numeric")
+            p=p+scale_fill_viridis_c()
+          }
+          
+          df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
+          names(df.to.test) <- c("variable", "sample")
+          t=chisq.test(table(df.to.test$variable, df.to.test$sample),simulate.p.value = T)
+          
+          p=list(p,t)
+          
+          return(p)
+          
+          
+        })
+        
+        
+        
+      }else{
+        
+        # get thresholded Spots 
+        gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+          if(!is.null(nr.sample)){
+            df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+          }else{
+            df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+          }
+        })
+        df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+        rownames(df.1) <- df$barcodes
+        
+        type <- purrr::map(.x=1:length(gs), .f=function(i){
+          rep(gs[i], length(gl.ls[[i]]))
+        }) %>% unlist()
+        
+        bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+        
+        rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+        bc.1$module_score <- 0
+        scores <- df.1[bc.1$inp, gs]
+        
+        for(i in names(scores)[1:5]){
+          bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+            scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+        }
+        bc <- bc.1$inp
+        TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+        
+        TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+        
+        p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=1, fill=!!sym(feature)))+geom_col(size=1)+ theme_void()
+        
+        df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
+        names(df.to.test) <- c("variable", "sample")
+        t=chisq.test(table(df.to.test$variable, df.to.test$sample),simulate.p.value = T)
+        
+        p=list(p,t)
+        
+      }
+      
+      
+      
+      
+      
+    }
+    if(plot.type=="line"){
+      
+      if(!is.null(across)){
+        split.f <- SPATA2::joinWithFeatures(spata2_obj, features = across) %>% dplyr::select(barcodes, !!sym(across))
+        df <- df %>% left_join(., split.f, by="barcodes")
+        
+        
+        p <- purrr::map(.x=unique(df %>% pull(!!sym(across))), .f=function(sep.i){
+          
+          df <- df %>% filter(!!sym(across)==sep.i)
+          
+          # get thresholded Spots 
+          gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+            if(!is.null(nr.sample)){
+              df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+            }else{
+              df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+            }
+          })
+          df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+          rownames(df.1) <- df$barcodes
+          
+          type <- purrr::map(.x=1:length(gs), .f=function(i){
+            rep(gs[i], length(gl.ls[[i]]))
+          }) %>% unlist()
+          
+          bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+          
+          rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+          bc.1$module_score <- 0
+          scores <- df.1[bc.1$inp, gs]
+          
+          for(i in names(scores)[1:5]){
+            bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+              scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+          }
+          bc <- bc.1$inp
+          TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+          
+          TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+          
+          p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=!!sym(feature),col=bc.1$module))+geom_line(size=size, alpha=alpha)+ theme_classic()
+          
+          df.to.test <- TC.cont %>% dplyr::select(module,!!sym(sample.type), !!sym(feature))
+          names(df.to.test) <- c("variable", "sample", "value")
+          anova <- aov( value~ variable * sample, data = df.to.test)
+          t <- TukeyHSD(anova, which = "variable")$variable
+          p=list(p,t)
+          
+          
+        })
+        
+        
+        
+      }else{
+        
+        # get thresholded Spots 
+        gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+          if(!is.null(nr.sample)){
+            df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+          }else{
+            df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+          }
+        })
+        df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+        rownames(df.1) <- df$barcodes
+        
+        type <- purrr::map(.x=1:length(gs), .f=function(i){
+          rep(gs[i], length(gl.ls[[i]]))
+        }) %>% unlist()
+        
+        bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+        
+        rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+        bc.1$module_score <- 0
+        scores <- df.1[bc.1$inp, gs]
+        
+        for(i in names(scores)[1:5]){
+          bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+            scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+        }
+        bc <- bc.1$inp
+        TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+        
+        TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+        
+        p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=!!sym(feature),col=bc.1$module))+geom_line(size=size, alpha=alpha)+ theme_classic()
+        
+        df.to.test <- TC.cont %>% dplyr::select(module,!!sym(sample.type), !!sym(feature))
+        names(df.to.test) <- c("variable", "sample", "value")
+        anova <- aov( value~ variable * sample, data = df.to.test)
+        t <- TukeyHSD(anova, which = "variable")$variable
+        p=list(p,t)
+        
+      }
+      
+      
+      
+      
+      
+    }
+    if(plot.type=="point"){
+      
+      if(!is.null(across)){
+        split.f <- SPATA2::joinWithFeatures(spata2_obj, features = across) %>% dplyr::select(barcodes, !!sym(across))
+        df <- df %>% left_join(., split.f, by="barcodes")
+        
+        
+        p <- purrr::map(.x=unique(df %>% pull(!!sym(across))), .f=function(sep.i){
+          
+          df <- df %>% filter(!!sym(across)==sep.i)
+          
+          # get thresholded Spots 
+          gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+            if(!is.null(nr.sample)){
+              df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+            }else{
+              df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+            }
+          })
+          df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+          rownames(df.1) <- df$barcodes
+          
+          type <- purrr::map(.x=1:length(gs), .f=function(i){
+            rep(gs[i], length(gl.ls[[i]]))
+          }) %>% unlist()
+          
+          bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+          
+          rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+          bc.1$module_score <- 0
+          scores <- df.1[bc.1$inp, gs]
+          
+          for(i in names(scores)[1:5]){
+            bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+              scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+          }
+          bc <- bc.1$inp
+          TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+          
+          TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+          
+          p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=!!sym(feature),col=bc.1$module))+geom_point(size=size, alpha=alpha)+ theme_classic()
+          
+          df.to.test <- TC.cont %>% dplyr::select(module,!!sym(sample.type), !!sym(feature))
+          names(df.to.test) <- c("variable", "sample", "value")
+          anova <- aov( value~ variable * sample, data = df.to.test)
+          t <- TukeyHSD(anova, which = "variable")$variable
+          p=list(p,t)
+          
+          
+        })
+        
+        
+        
+      }else{
+        
+        # get thresholded Spots 
+        gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+          if(!is.null(nr.sample)){
+            df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+          }else{
+            df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+          }
+        })
+        df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+        rownames(df.1) <- df$barcodes
+        
+        type <- purrr::map(.x=1:length(gs), .f=function(i){
+          rep(gs[i], length(gl.ls[[i]]))
+        }) %>% unlist()
+        
+        bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+        
+        rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+        bc.1$module_score <- 0
+        scores <- df.1[bc.1$inp, gs]
+        
+        for(i in names(scores)[1:5]){
+          bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+            scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+        }
+        bc <- bc.1$inp
+        TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+        
+        TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+        
+        if(is.null(size)){
+          p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=!!sym(feature),col=bc.1$module, size=!!sym(feature)))+geom_point(alpha=alpha)+ theme_classic()
+        }else{
+          p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=!!sym(feature), col=bc.1$module))+geom_point(size=size, alpha=alpha)+ theme_classic()
+        }
+        
+        
+        df.to.test <- TC.cont %>% dplyr::select(module,!!sym(sample.type), !!sym(feature))
+        names(df.to.test) <- c("variable", "sample", "value")
+        anova <- aov( value~ variable * sample, data = df.to.test)
+        t <- TukeyHSD(anova, which = "variable")$variable
+        p=list(p,t)
+        
+      }
+      
+      
+      
+      
+      
+    }
+    if(plot.type=="bar.comp"){
+      
+      if(!is.null(across)){
+        split.f <- SPATA2::joinWithFeatures(spata2_obj, features = across) %>% dplyr::select(barcodes, !!sym(across))
+        df <- df %>% left_join(., split.f, by="barcodes")
+        
+        
+        p <- purrr::map(.x=unique(df %>% pull(!!sym(across))), .f=function(sep.i){
+          
+          df <- df %>% filter(!!sym(across)==sep.i)
+          
+          # get thresholded Spots 
+          # get thresholded Spots 
+          gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+            if(!is.null(nr.sample)){
+              df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+            }else{
+              df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+            }
+          })
+          df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+          rownames(df.1) <- df$barcodes
+          
+          type <- purrr::map(.x=1:length(gs), .f=function(i){
+            rep(gs[i], length(gl.ls[[i]]))
+          }) %>% unlist()
+          
+          bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+          
+          rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+          bc.1$module_score <- 0
+          scores <- df.1[bc.1$inp, gs]
+          
+          for(i in names(scores)[1:5]){
+            bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+              scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+          }
+          bc <- bc.1$inp
+          TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+          
+          TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(module, desc(module_score))
+          
+          p=ggplot(data=TC.cont, aes(x=module, y=1, fill=!!sym(feature)))+
+            geom_bar(position="fill", stat="identity")+
+            theme_classic()+
+            #scale_fill_brewer(Feat,type='qual')+
+            ylab("Percentage")+
+            theme(
+              plot.margin = margin(t = 50, r = 100, b = 50, l = 100, unit = "pt"),
+              axis.text.y = element_text(color="black"),
+              axis.text.x = element_text(color="black", angle = 75, vjust = .5))
+          
+          df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
+          names(df.to.test) <- c("variable", "sample")
+          t=chisq.test(table(df.to.test$variable, df.to.test$sample),simulate.p.value = T)
+          
+          p=list(p,t)
+          
+          return(p)
+          
+          
+        })
+        
+        
+        
+      }else{
+        
+        # get thresholded Spots 
+        gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+          if(!is.null(nr.sample)){
+            df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+          }else{
+            df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+          }
+        })
+        df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+        rownames(df.1) <- df$barcodes
+        
+        type <- purrr::map(.x=1:length(gs), .f=function(i){
+          rep(gs[i], length(gl.ls[[i]]))
+        }) %>% unlist()
+        
+        bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+        
+        rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+        bc.1$module_score <- 0
+        scores <- df.1[bc.1$inp, gs]
+        
+        for(i in names(scores)[1:5]){
+          bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+            scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+        }
+        bc <- bc.1$inp
+        TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+        
+        TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(module, desc(module_score))
+        
+        p=ggplot(data=TC.cont, aes(x=module, y=1, fill=!!sym(feature)))+
+          geom_bar(position="fill", stat="identity")+
+          theme_classic()+
+          #scale_fill_brewer(Feat,type='qual')+
+          ylab("Percentage")+
+          theme(
+            plot.margin = margin(t = 50, r = 100, b = 50, l = 100, unit = "pt"),
+            axis.text.y = element_text(color="black"),
+            axis.text.x = element_text(color="black", angle = 75, vjust = .5))
+        
+        df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
+        names(df.to.test) <- c("variable", "sample")
+        t=chisq.test(table(df.to.test$variable, df.to.test$sample),simulate.p.value = T)
+        
+        p=list(p,t)
+        
+      }
+      
+      
+      
+      
+      
+    }
+    if(plot.type=="circular"){
+      
+      if(!is.null(across)){
+        split.f <- SPATA2::joinWithFeatures(spata2_obj, features = across) %>% dplyr::select(barcodes, !!sym(across))
+        df <- df %>% left_join(., split.f, by="barcodes")
+        
+        
+        p <- purrr::map(.x=unique(df %>% pull(!!sym(across))), .f=function(sep.i){
+          
+          df <- df %>% filter(!!sym(across)==sep.i)
+          
+          # get thresholded Spots 
+          # get thresholded Spots 
+          gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+            if(!is.null(nr.sample)){
+              df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+            }else{
+              df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+            }
+          })
+          df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+          rownames(df.1) <- df$barcodes
+          
+          type <- purrr::map(.x=1:length(gs), .f=function(i){
+            rep(gs[i], length(gl.ls[[i]]))
+          }) %>% unlist()
+          
+          bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+          
+          rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+          bc.1$module_score <- 0
+          scores <- df.1[bc.1$inp, gs]
+          
+          for(i in names(scores)[1:5]){
+            bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+              scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+          }
+          bc <- bc.1$inp
+          TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+          
+          TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(module, desc(module_score))
+          
+          p=ggplot(data=TC.cont, aes(x=module, y=1, fill=!!sym(feature)))+
+            geom_bar(position="fill", stat="identity")+
+            theme_classic()+
+            #scale_fill_brewer(Feat,type='qual')+
+            ylab("Percentage")+
+            theme(
+              plot.margin = margin(t = 50, r = 100, b = 50, l = 100, unit = "pt"),
+              axis.text.y = element_text(color="black"),
+              axis.text.x = element_text(color="black", angle = 75, vjust = .5))
+          
+          df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
+          names(df.to.test) <- c("variable", "sample")
+          t=chisq.test(table(df.to.test$variable, df.to.test$sample),simulate.p.value = T)
+          
+          p=list(p,t)
+          
+          return(p)
+          
+          
+        })
+        
+        
+        
+      }else{
+        
+        # get thresholded Spots 
+        gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
+          if(!is.null(nr.sample)){
+            df %>%  arrange(desc(!!sym(gs[i]))) %>% head(nr.sample)  %>% pull(barcodes)
+          }else{
+            df %>% filter(!!sym(gs[i])>thr[i]) %>% arrange(desc(!!sym(gs[i])))  %>% pull(barcodes)
+          }
+        })
+        df.1 <- df %>% dplyr::select({{gs}}) %>% as.data.frame()
+        rownames(df.1) <- df$barcodes
+        
+        type <- purrr::map(.x=1:length(gs), .f=function(i){
+          rep(gs[i], length(gl.ls[[i]]))
+        }) %>% unlist()
+        
+        bc.1 <- data.frame(inp=gl.ls %>% unlist(), dup=duplicated(gl.ls %>% unlist()), module=type)
+        
+        rownames(bc.1) <- paste0(bc.1$inp,"_",1:nrow(bc.1))
+        bc.1$module_score <- 0
+        scores <- df.1[bc.1$inp, gs]
+        
+        for(i in names(scores)[1:5]){
+          bc.1[bc.1 %>% filter(module==i) %>% rownames(), ]$module_score <- 
+            scales::rescale(scores[bc.1 %>% filter(module==i) %>% pull(inp), i], c(0,1))
+        }
+        bc <- bc.1$inp
+        TC.cont <- SPATA2::getFeatureDf(spata2_obj) %>% mutate(inp=barcodes) %>% as.data.frame() %>% filter(inp %in% bc.1$inp)
+        
+        TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
+        
+        cir <-  
+          TC.cont %>% 
+          select( c(1:ncol(TC.cont))[str_detect(names(TC.cont), pattern = "Chr")]) %>% 
+          reshape2::melt() %>% 
+          rename("y":=value) %>% 
+          mutate(x=1:nrow(.)) %>% 
+          arrange(match(.$variable, paste0("Chr", 0:24)))
+        
+        colors <- scales::hue_pal()(5)
+        colors <- scales::hue_pal()(8) %>% sample()
+        cir$variable <- as.character(cir$variable)
+        cir <- cir %>% 
+          filter(!variable %in% c("Chr0","Chr24")) %>% 
+          mutate(module=rep(TC.cont$module, length(unique(.$variable))))
+        var <- TC.cont$module
+        var2 <- TC.cont$Phase
+        color=lapply(1:length(unique(var)), function(i){rep(scales::hue_pal()(length(unique(var)))[i], length(var[var==unique(var)[i]])) }) %>% unlist()
+        color2=lapply(1:length(var2), function(i){var2[i] <- colors[match(var2[i], unique(var2))]}) %>% unlist()
+        
+        cir$y[is.na(cir$y)] <- 1
+        cir$variable <- as.factor(cir$variable)
+        cir$Prolif <- rep(TC.cont$G2M.Score, length(unique(cir$variable)))
+        
+        correspondance
+        
+        
+        #Reorder levels
+        cir$variable <- factor(cir$variable,paste0("Chr", 1:23))
+        
+        #Layer1
+        circlize::circos.par(gap.degree = 2, cell.padding = c(0, 0, 0, 0))
+        circlize::circos.initialize(cir$variable, x=cir$x)
+        #Layer1
+        circlize::circos.track(cir$variable, x=cir$x,y=cir$y,ylim=c(0.9,1.1), panel.fun = function(x,y) {
+          circlize::circos.points(x, y, col = color, pch = 16, cex = 0.1)
+          circlize::circos.lines(x, y=rep(1,length(x)), col = "black")
+          circlize::circos.text(CELL_META$xcenter, CELL_META$cell.ylim[2] + circlize::mm_y(2), CELL_META$sector.index, niceFacing = TRUE)})
+        
+        #Layer2
+        zoom <- cir %>% filter(variable=="Chr1"); zoom$variable <- as.character(zoom$variable) 
+        circlize::circos.par(gap.degree = 2)
+        circlize::circos.initialize(zoom$module, x=zoom$x)
+        #Layer1
+        circlize::circos.track(zoom$module, x=zoom$x,y=zoom$Prolif, panel.fun = function(x,y) {
+          circlize::circos.lines(x, y=rep(0,length(x)), col = "black")
+          circlize::circos.points(x, y, col = color2, cex=0.5, pch=16)})
+        
+        
+        
+        df.2 <- df.1[bc, gs] %>% as.matrix()
+        col_fun1 = colorRamp2(c(0, 0.5, 1), rev(RColorBrewer::brewer.pal(3, "RdBu")))
+        col= colorRampPalette(rev(RColorBrewer::brewer.pal(9, "RdBu")))(3)
+        circos.clear()
+        circos.heatmap(df.2,col = col_fun1, cluster = F, split = zoom$module)
+        
+        
+        p=ggplot(data=TC.cont, aes(x=module, y=1, fill=!!sym(feature)))+
+          geom_bar(position="fill", stat="identity")+
+          theme_classic()+
+          #scale_fill_brewer(Feat,type='qual')+
+          ylab("Percentage")+
+          theme(
+            plot.margin = margin(t = 50, r = 100, b = 50, l = 100, unit = "pt"),
+            axis.text.y = element_text(color="black"),
+            axis.text.x = element_text(color="black", angle = 75, vjust = .5))
+        
+        df.to.test <- TC.cont %>% dplyr::select(module,!!sym(feature))
+        names(df.to.test) <- c("variable", "sample")
+        t=chisq.test(table(df.to.test$variable, df.to.test$sample),simulate.p.value = T)
+        
+        p=list(p,t)
+        
+      }
+      
+      
+      
+      
+      
+    }
+    
+    return(p)
+    
+  }
 
 
 
