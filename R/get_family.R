@@ -123,3 +123,50 @@ getSurroundedSpots <- function(object){
   base::return(final_df)
   
 }
+
+
+#' @title  getSurroundedSpots
+#' @author Dieter Henrik Heiland
+#' @description getSurroundedSpots
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+#' 
+getSurroundedSpots.sc <- function(object){
+  of_sample <- SPATA2::getSampleNames(object)
+  coords <- SPATA2::getCoordsDf(object)
+  bc_origin <- coords$barcodes
+  bc_destination <- coords$barcodes
+  
+  # get grouped data.frame with all barcode combinations
+  dfgr <-
+    tidyr::expand_grid(bc_origin, bc_destination) %>%
+    dplyr::left_join(x = ., y = dplyr::select(coords, bc_origin = barcodes, xo = x, yo = y), by = "bc_origin") %>%
+    dplyr::left_join(x = ., y = dplyr::select(coords, bc_destination = barcodes, xd = x, yd = y), by = "bc_destination") %>%
+    dplyr::mutate(distance = base::round(base::sqrt((xd - xo)^2 + (yd - yo)^2), digits = 10)) %>%
+    dplyr::group_by(bc_origin)
+  
+  # filter barcodes that are surrounded by a total of six spots
+  
+  sufficient_bc <-
+    dplyr::slice_min(.data = dfgr, order_by = distance, n = 7) %>%
+    dplyr::group_by(bc_origin, distance) %>%
+    dplyr::summarise(count = dplyr::n()) %>%
+    dplyr::filter(distance != 0 & count == 1) %>%
+    dplyr::pull(bc_origin)
+  
+  # filter for barcodes 
+  
+  final_df <-
+    dplyr::filter(dfgr, bc_origin %in% sufficient_bc) %>%
+    dplyr::slice_min(order_by = distance, n = 7) %>%
+    dplyr::mutate(sample = {{of_sample}}) %>%
+    dplyr::select(sample, dplyr::everything()) 
+  
+  base::return(final_df)
+  
+}
+
+

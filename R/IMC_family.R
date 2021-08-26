@@ -131,7 +131,7 @@ createReferenceDIM <- function(object, marker.list, n=500, booster=0.5, batch=50
       select.cells.pos
     names(out)[2] <- names(marker.list)[i]
     
-      
+    
     
     return(out)
     
@@ -147,14 +147,14 @@ createReferenceDIM <- function(object, marker.list, n=500, booster=0.5, batch=50
   #clean
   vv <- names(marker.list)
   bc <- purrr::map_df(.x=1:length(vv), .f=function(i){
-  df$clean <- rowMeans(df[, c(vv[-c(i)])])
-  bc <- 
-    df %>% 
-    dplyr::mutate(Comp=!!sym(vv[i])-clean) %>% 
-    dplyr::top_n(n=n, wt=Comp) %>% 
-    dplyr::mutate(cell.type=vv[i], cell.score=!!sym(vv[i])) %>% 
-    dplyr::select(barcodes, cell.type,cell.score, Comp)
-  return(bc)
+    df$clean <- rowMeans(df[, c(vv[-c(i)])])
+    bc <- 
+      df %>% 
+      dplyr::mutate(Comp=!!sym(vv[i])-clean) %>% 
+      dplyr::top_n(n=n, wt=Comp) %>% 
+      dplyr::mutate(cell.type=vv[i], cell.score=!!sym(vv[i])) %>% 
+      dplyr::select(barcodes, cell.type,cell.score, Comp)
+    return(bc)
   }) 
   df <- df %>% dplyr::left_join(data.frame(barcodes=bc$barcodes), ., by="barcodes")
   #pheatmap::pheatmap(df[2:6] %>% as.matrix() %>% t(), cluster_rows = F, cluster_cols = F)
@@ -176,7 +176,7 @@ createReferenceDIM <- function(object, marker.list, n=500, booster=0.5, batch=50
   df.umap <- df.umap[!duplicated(df.umap$barcodes), ]
   #df.umap <- NFCN2::getCleaned(df.umap, feat = "UMAP_1", q=.005)
   #df.umap <- NFCN2::getCleaned(df.umap, feat = "UMAP_2", q=.005)
-
+  
   
   #ggplot(data=df.umap, mapping=aes(x=UMAP_1, y=UMAP_2, color=cell.types))+
   #  geom_point()+
@@ -186,7 +186,7 @@ createReferenceDIM <- function(object, marker.list, n=500, booster=0.5, batch=50
   seurat <- SPATA2::transformSpataToSeurat(object,assay_name = "RNA", RunPCA=F, FindNeighbors=F, FindClusters=F, RunTSNE=F, RunUMAP=F)
   seurat <- subset(seurat, cells=df.umap$barcodes)
   
-
+  
   #Cell type
   seurat@meta.data$cell.type <- df.umap$cell.type
   seurat <- Seurat::FindVariableFeatures(seurat)
@@ -205,7 +205,7 @@ createReferenceDIM <- function(object, marker.list, n=500, booster=0.5, batch=50
   seurat@reductions$ref <- Ref
   
   #UMAP
-  seurat <- Seurat::RunUMAP(seurat, dim=1:5, reduction="ref", return.model=T, reduction.name = "ref.umap")
+  seurat <- Seurat::RunUMAP(seurat, dim=1:c(seurat@reductions$ref %>% length()), reduction="ref", return.model=T, reduction.name = "ref.umap")
   #Seurat::DimPlot(seurat, group.by = "cell.type", reduction = "umap")
   
   
@@ -226,9 +226,9 @@ createReferenceDIM <- function(object, marker.list, n=500, booster=0.5, batch=50
     reference.assay="RNA",
     normalization.method = "LogNormalize",
     reference.reduction = "ref",
-    dims = 1:5
+    dims = 1:c(seurat@reductions$ref %>% length())
   )
-
+  
   all.data <- Seurat::MapQuery(
     anchorset = anchors,
     query = all.data,
