@@ -278,34 +278,36 @@ CellProfilerDistancePlot <- function(data,prefix, data.dist, exclude=NULL){
   if(!is.null(exclude)){cell.types <- cell.types[!cell.types %in% exclude ] }
   
   distance <- 
-  purrr::map(.x=images, .f=function(img){
-    
-    img.dist <- purrr::map(.x=1:length(data.dist[[img]]$distance.list), .f=function(type.cell){
+    purrr::map(.x=images, .f=function(img){
       
-      distance <- data.dist[[img]]$distance.list[[type.cell]]
-      data.join <- 
-        data$data %>% 
-        dplyr::filter(ImageNumber==img) %>% 
-        dplyr::mutate(ID = paste0(prefix,"_",ObjectNumber))
+      img.dist <- purrr::map(.x=1:length(data.dist[[img]]$distance.list), .f=function(type.cell){
+        
+        distance <- data.dist[[img]]$distance.list[[type.cell]]
+        data.join <- 
+          data$data %>%
+          dplyr::filter(ImageNumber==img) %>% 
+          dplyr::left_join(., merged.cell.pos %>% dplyr::select(ObjectNumber, ID), by="ObjectNumber")
+        #dplyr::mutate(ID = paste0(type,"_",ObjectNumber))
+        
+        if(!stringr::str_detect(distance$From[1], pattern = prefix)){
+          a <- distance$To; distance$To <- distance$From;distance$From <- a
+        }
+        
+        distance <- 
+          distance %>% 
+          dplyr::mutate(ID=From) %>% 
+          dplyr::select(ID, To, dist) %>% 
+          dplyr::left_join(.,  data.join, by="ID" )
+        
+        return(distance)
+      })
       
-      if(!stringr::str_detect(distance$From[1], pattern = prefix)){
-        a <- distance$To; distance$To <- distance$From;distance$From <- a
-      }
+      vv <- purrr::map(.x=img.dist, .f=function(i){is.na(i$ImageNumber[1])}) %>% unlist()
+      img.dist <- img.dist[!vv]
       
-      distance <- 
-      distance %>% 
-        dplyr::mutate(ID=From) %>% 
-        dplyr::select(ID, To, dist) %>% 
-        dplyr::left_join(.,  data.join, by="ID" )
-    
-    return(distance)
+      
+      return(img.dist)
     })
-    vv <- purrr::map(.x=img.dist, .f=function(i){is.na(i$ImageNumber[1])}) %>% unlist()
-    img.dist <- img.dist[!vv]
-  
-  
-    return(img.dist)
-  })
   
   
   #Sum up images
@@ -322,7 +324,7 @@ CellProfilerDistancePlot <- function(data,prefix, data.dist, exclude=NULL){
   return(sum.dist)
   
   
-   
+  
 }
 
 #' @title CellProfiler2Matlab 

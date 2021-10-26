@@ -253,7 +253,7 @@ jaccard <- function(a, b) {
 #' @return 
 #' @examples 
 #' @export
-inferSpotlight <- function(spata.obj, seurat.obj, feature, marker.genes=NULL){
+inferSpotlight <- function(spata.obj, seurat.obj, feature, marker.genes=NULL, ntop=NULL, transf = "uv", min_cont = 0.09){
   
   #Set up Seurat features
   seurat.obj <- Seurat::SetIdent(seurat.obj, value=feature)
@@ -267,14 +267,24 @@ inferSpotlight <- function(spata.obj, seurat.obj, feature, marker.genes=NULL){
     SPOTlight::spotlight_deconvolution(se_sc= seurat.obj,
                                        counts_spatial=SPATA2::getCountMatrix(spata.obj),
                                        clust_vr=feature,
-                                       cluster_markers=marker.spotlight)
+                                       cluster_markers=marker.spotlight,
+                                       ntop=ntop,
+                                       transf = transf,
+                                       min_cont= min_cont)
   
+  
+  feature_df = 
+    spot[[2]] %>% 
+    as.data.frame() %>% 
+    dplyr::select(-res_ss) %>% 
+    dplyr::mutate(barcodes=SPATA2::getBarcodes(spata.obj)) %>% 
+    dplyr::select(barcodes, 1:ncol(.))
   
   
   # Transfer back
   spata.obj <- 
     SPATA2::addFeatures(spata.obj, 
-                        feature_df = spot[[2]] %>% as.data.frame() %>% dplyr::mutate(barcodes=SPATA2::getBarcodes(spata.obj)) %>% dplyr::select(barcodes, 1,2),,
+                        feature_df = feature_df,
                         overwrite = T
                         )
   

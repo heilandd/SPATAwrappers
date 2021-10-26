@@ -110,6 +110,7 @@ plotJuxtapositionSPATA <- function(object,
 plotStreamlines <- function(VF,
                             parameter,
                             size.arrow=1,
+                            surface=T,
                             grid=c(50,50),
                             gamma.u=0.2,
                             gamma.v=0.2,
@@ -196,7 +197,9 @@ plotStreamlines <- function(VF,
   
   if(color.points %>% class()=="factor"){
     p= ggplot2::ggplot()+ggplot2::theme_void()
+    if(surface==T){
     p=p+geom_point(data=VF, mapping=aes(x,y, color=color.points), size=pt.size, alpha=pt.alpha)
+    }
     p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
                               size=size.arrow,
                               arrow.length = arrow.length,
@@ -208,8 +211,10 @@ plotStreamlines <- function(VF,
   }else{
     
     p= ggplot2::ggplot()+ggplot2::theme_void()
-    p=p+geom_point(data=VF, mapping=aes(x,y, color=color.points), size=pt.size, alpha=pt.alpha)
-    p=p+ggplot2::scale_color_viridis_c(guide = "none")
+    if(surface==T){
+      p=p+geom_point(data=VF, mapping=aes(x,y, color=color.points), size=pt.size, alpha=pt.alpha)
+      p=p+ggplot2::scale_color_viridis_c(guide = "none")
+    }
     p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
                               size=size.arrow,
                               arrow.length = arrow.length,

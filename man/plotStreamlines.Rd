@@ -8,6 +8,7 @@ plotStreamlines(
   VF,
   parameter,
   size.arrow = 1,
+  surface = T,
   grid = c(50, 50),
   gamma.u = 0.2,
   gamma.v = 0.2,
