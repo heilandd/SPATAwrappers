@@ -124,10 +124,14 @@ plotStreamlines <- function(VF,
                             skip=2.5,
                             xwrap=NULL,
                             ywrap=NULL){
+  
+  color.points <- parameter
+  if(!is.null(color.extern)){color.points <- color.extern }
+  
   VF <- 
     VF %>% 
-    dplyr::select(x,y,{{parameter}}, t.x, t.y) %>% 
-    rename("parameter":=!!sym(parameter))
+    dplyr::select(x,y,{{parameter}},{{color.points}}, t.x, t.y) %>% 
+    dplyr::rename("parameter":=!!sym(parameter))
   
   drifter.split.sf <-  
     VF %>% 
@@ -192,13 +196,11 @@ plotStreamlines <- function(VF,
     dplyr::mutate(vel = sqrt(u^2+v^2))
   
   
-  color.points <- VF$parameter
-  if(!is.null(color.extern)){color.points <- color.extern}
   
   if(color.points %>% class()=="factor"){
     p= ggplot2::ggplot()+ggplot2::theme_void()
     if(surface==T){
-    p=p+geom_point(data=VF, mapping=aes(x,y, color=color.points), size=pt.size, alpha=pt.alpha)
+    p=p+geom_point(data=VF, mapping=aes(x,y, color=.data[[color.points]]), size=pt.size, alpha=pt.alpha)
     }
     p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
                               size=size.arrow,
@@ -212,7 +214,7 @@ plotStreamlines <- function(VF,
     
     p= ggplot2::ggplot()+ggplot2::theme_void()
     if(surface==T){
-      p=p+geom_point(data=VF, mapping=aes(x,y, color=color.points), size=pt.size, alpha=pt.alpha)
+      p=p+geom_point(data=VF, mapping=aes(x,y, color=.data[[color.points]]), size=pt.size, alpha=pt.alpha)
       p=p+ggplot2::scale_color_viridis_c(guide = "none")
     }
     p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
@@ -242,7 +244,7 @@ plotVectorFields <- function(VF, parameter, pt.size=6,pt.alpha=0.8,color.extern=
   VF <- 
     VF %>% 
     dplyr::select(x,y,{{parameter}}, t.x, t.y) %>% 
-    rename("parameter":=!!sym(parameter))
+    dplyr::rename("parameter":=!!sym(parameter))
   
   
   color.points <- VF$parameter
