@@ -382,7 +382,8 @@ plotHeatmap <-  function(object,
         
         
         
-      }else{
+      }
+      else{
         
         # get thresholded Spots 
         gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
@@ -417,10 +418,10 @@ plotHeatmap <-  function(object,
                              show_colnames = F,
                              color=col,
                              silent=T)
-        
+        p=list(p, df.2)
+        return(p) 
       }
-      
-      return(p)
+      return(p) 
       
     }
     if(plot.type=="stat"){
@@ -687,7 +688,8 @@ plotHeatmap <-  function(object,
         
         
         
-      }else{
+      }
+      else{
         
         # get thresholded Spots 
         gl.ls <- purrr::map(.x=1:length(gs), .f=function(i){
@@ -719,6 +721,10 @@ plotHeatmap <-  function(object,
         
         TC.cont <- TC.cont %>% dplyr::left_join(.,bc.1, by="inp") %>% arrange(match(.$module, gs), desc(module_score))
         
+        #Problem of duplicated barcodes add .1 to duplicated bcs
+        TC.cont$barcodes <- TC.cont$barcodes %>% make.unique(., ".")
+        TC.cont$barcodes <- factor(TC.cont$barcodes, levels=TC.cont$barcodes)
+        
         if(is.null(size)){
           p=ggplot(TC.cont, mapping=aes(x=1:nrow(TC.cont), y=!!sym(feature),col=bc.1$module, size=!!sym(feature)))+geom_point(alpha=alpha)+ theme_classic()
         }else{
@@ -730,14 +736,14 @@ plotHeatmap <-  function(object,
         names(df.to.test) <- c("variable", "sample", "value")
         anova <- aov( value~ variable * sample, data = df.to.test)
         t <- TukeyHSD(anova, which = "variable")$variable
-        p=list(p,t)
+        p=list(p,t, TC.cont)
         
+        return(p)
       }
       
+      return(p)
       
-      
-      
-      
+    
     }
     if(plot.type=="bar.comp"){
       
@@ -917,7 +923,6 @@ plotHeatmap <-  function(object,
           
           p=list(p,t)
           
-          return(p)
           
           
         })
@@ -1036,7 +1041,150 @@ plotHeatmap <-  function(object,
       
     }
     
+    
+    
     return(p)
+    
+  }
+
+#' @title  plotCNVPoints
+#' @author Dieter Henrik Heiland
+#' @description plotCNVPoints
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+plotCNVPoints <- 
+  function(object,
+           across = NULL,
+           across_subset = NULL,
+           relevel = NULL,
+           clr = "blue",
+           ...,
+           of_sample = NA,
+           verbose = NULL){
+    
+    # 1. Control --------------------------------------------------------------
+    
+    #hlpr_assign_arguments(object)
+    
+    of_sample <- SPATA2::check_sample(object, of_sample = of_sample, of.length = 1)
+    
+    # -----
+    
+    
+    # 2. Data preparation -----------------------------------------------------
+    
+    # cnv results
+    cnv_results <- getCnvResults(object, of_sample = of_sample)
+    
+    cnv_data <- cnv_results$cnv_mtr
+    
+    if(base::is.null(across)){
+      
+      confuns::give_feedback(msg = "Plotting cnv-results for whole sample.", verbose = verbose)
+      
+      plot_df <-
+        base::data.frame(
+          mean = base::apply(cnv_data, MARGIN = 1, FUN = stats::median),
+          sd = base::apply(cnv_data, MARGIN = 1, FUN = stats::sd)
+        ) %>%
+        tibble::rownames_to_column(var = "hgnc_symbol") %>%
+        dplyr::left_join(x = ., y = cnv_results$gene_pos_df, by = "hgnc_symbol") %>%
+        dplyr::mutate(
+          chromosome_name = base::factor(chromosome_name, levels = base::as.character(0:23))
+        ) %>%
+        tibble::as_tibble() %>% 
+        dplyr::mutate(mean=runif(n=nrow(.), 
+                                 min=c(mean-sd), 
+                                 max=c(mean+sd)) )
+      
+      line_df <-
+        dplyr::count(x = plot_df, chromosome_name) %>%
+        dplyr::mutate(
+          line_pos = base::cumsum(x = n),
+          line_lag = dplyr::lag(x = line_pos, default = 0) ,
+          label_breaks = (line_lag + line_pos) / 2
+        ) %>%
+        tidyr::drop_na()
+      
+      final_plot <-
+        ggplot2::ggplot(data = plot_df, mapping = ggplot2::aes(x = 1:base::nrow(plot_df), y = mean)) +
+        ggplot2::geom_point(color=clr)+
+        ggplot2::geom_vline(data = line_df, mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5) +
+        ggplot2::theme_classic() +
+        ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) +
+        ggplot2::labs(x = "Chromosomes", y = "CNV-Results")
+      
+    } else if(base::is.character(across)){
+      
+      confuns::give_feedback(msg = glue::glue("Plotting cnv-results across '{across}'. This might take a few moments."),verbose = verbose)
+      
+      gene_names <- base::rownames(cnv_data)
+      
+      prel_df <-
+        base::as.data.frame(cnv_data) %>%
+        base::t() %>%
+        base::as.data.frame() %>%
+        tibble::rownames_to_column(var = "barcodes") %>%
+        joinWith(object = object, spata_df = ., features = across) %>%
+        confuns::check_across_subset(df = ., across = across, across.subset = across_subset, relevel = relevel) %>%
+        tidyr::pivot_longer(
+          cols = dplyr::all_of(gene_names),
+          names_to = "hgnc_symbol",
+          values_to = "cnv_values"
+        ) %>%
+        dplyr::left_join(x = ., y = cnv_results$gene_pos_df, by = "hgnc_symbol") %>%
+        dplyr::mutate(
+          chromosome_name = base::factor(chromosome_name, levels = base::as.character(0:23))
+        ) %>%
+        tibble::as_tibble()
+      
+      summarized_df <-
+        dplyr::group_by(prel_df, !!rlang::sym(x = across), chromosome_name, hgnc_symbol) %>%
+        dplyr::summarise(
+          cnv_mean = mean(x = cnv_values, na.rm = TRUE),
+          cnv_sd = stats::sd(x = cnv_values, na.rm = TRUE)
+        ) %>%
+        dplyr::ungroup() %>%
+        dplyr::mutate(cnv_mean=runif(n=nrow(summarized_df), 
+                                     min=c(cnv_mean-cnv_sd), 
+                                     max=c(cnv_mean+cnv_sd)) ) %>% 
+        dplyr::group_by(!!rlang::sym(x = across)) %>%
+        dplyr::mutate(x_axis = dplyr::row_number())
+      
+      
+      line_df <-
+        dplyr::count(x = summarized_df, chromosome_name) %>%
+        dplyr::ungroup() %>%
+        dplyr::group_by(!!rlang::sym(across)) %>%
+        dplyr::mutate(
+          line_pos = base::cumsum(x = n),
+          line_lag = dplyr::lag(x = line_pos, default = 0) ,
+          label_breaks = (line_lag + line_pos) / 2
+        )  %>%
+        tidyr::drop_na()
+      
+      names(summarized_df)[1] <- "across"
+      
+      final_plot <-
+        ggplot2::ggplot(data = summarized_df, mapping = ggplot2::aes(x = x_axis, y = cnv_mean)) +
+        ggplot2::geom_point()+
+        ggplot2::geom_vline(data = line_df,
+                            mapping = ggplot2::aes(xintercept = line_pos), linetype = "dashed", alpha = 0.5
+        ) +
+        ggplot2::facet_wrap(facets = ~ across) +
+        ggplot2::theme_classic() +
+        ggplot2::theme(strip.background = ggplot2::element_blank()) +
+        ggplot2::scale_x_continuous(breaks = line_df$label_breaks, labels = line_df$chromosome_name) +
+        ggplot2::labs(x = "Chromosomes", y = "CNV-Results")
+      
+    }
+    
+    confuns::give_feedback(msg = "Done.", verbose = verbose)
+    
+    base::return(final_plot)
     
   }
 
