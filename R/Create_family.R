@@ -12,7 +12,6 @@
 #' 
 #' @export
 
-
 createShell <- function(string, object.to.load, nameFromObject, wd=getwd()){
   string.start <- ' #!/usr/bin/Rscript \n \n \n '
   

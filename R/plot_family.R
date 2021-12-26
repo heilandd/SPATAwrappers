@@ -98,7 +98,6 @@ plotJuxtapositionSPATA <- function(object,
 }
 
 
-
 #' @title  plotStreamlines
 #' @author Dieter Henrik Heiland
 #' @description plotStreamlines
