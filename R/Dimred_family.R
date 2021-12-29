@@ -1,7 +1,7 @@
 
 #' @title  runNMF
-#' @author Dieter Henrik Heiland
-#' @description runNMF
+#' @author Dieter Henrik Heiland adopted from STutility
+#' @description runNMF adopted from STutility
 #' @param object Seurat object
 #' @inherit 
 #' @return 
@@ -92,7 +92,7 @@ runNMF <- function (
 
 
 #' @title  rnmf
-#' @author Dieter Henrik Heiland
+#' @author Dieter Henrik Heiland adopted from STutility
 #' @description rnmf
 #' @inherit 
 #' @return 
@@ -154,6 +154,21 @@ rnmf <- function (
 }
 
 
-
-
+#' @title  intern
+#' @author Dieter Henrik Heiland adopted from STutility
+#' @description intern
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+#'
+#'
+`%||%` <- function(lhs, rhs) {
+  if (!is.null(x = lhs)) {
+    return(lhs)
+  } else {
+    return(rhs)
+  }
+}
 
