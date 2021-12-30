@@ -1189,4 +1189,201 @@ plotCNVPoints <-
 
 
 
+#' @title  addNucleusPosition
+#' @author Dieter Henrik Heiland
+#' @description addNucleusPosition
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+
+addNucleusPosition <- function(object, segment.df, scale_file, tissue_positions.file){
+  
+  #get position and rescale
+  message(paste0("Process and scale:  ",sample.sp))
+  sample <- SPATA2::getSampleNames(object)
+  tissue.pos <- read.csv(tissue_positions.file, header=F)
+  scale <- as.numeric(str_remove(read.table(scale_file,header=F)$V5, pattern=","))
+  pos.data <- 
+    tissue.pos %>% 
+    dplyr::filter(V2==1) %>% 
+    dplyr::mutate(x.pos=as.numeric(V6)*scale, 
+                  y.pos=as.numeric(V5)*scale) %>% 
+    dplyr::rename("barcodes":=V1) %>% 
+    dplyr::select(barcodes,x.pos,y.pos)
+  
+  #rescale position.df
+  coords <- SPATA2::getCoordsDf(object)
+  rescale.df <- pos.data %>% left_join(.,coords,by="barcodes")
+  rescale.factor <- rescale.df$x[1]/rescale.df$x.pos[1]
+  segment.df.scaled <- 
+    segment.df %>% 
+    dplyr::mutate(x=x*rescale.factor, 
+                  y=y*rescale.factor,
+                  Cell=paste0("Cell_", ObjectNumber)) %>% 
+    dplyr::select(Cell,x,y)
+  
+  
+  object@spatial[[sample]]$Cell_coords <- segment.df.scaled
+  
+  return(object)
+  
+}
+
+#' @title  getNucleusPosition
+#' @author Dieter Henrik Heiland
+#' @description getNucleusPosition
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+
+getNucleusPosition <- function(object){
+  sample <- SPATA2::getSampleNames(object)
+  if(!is.null(object@spatial[[sample]]$Cell_coords)){return(object@spatial[[sample]]$Cell_coords)} else{message("Cell_coords do not exist")}
+}
+
+#' @title  plot2DInterpolation
+#' @author Dieter Henrik Heiland
+#' @description plot2DInterpolation
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+
+plot2DInterpolation <- function(object, 
+                                color_by,  
+                                pt.size=0.5, 
+                                pt.alpha=1,
+                                alpha2pred=T,
+                                smooth=F, 
+                                smooth_span=NULL, 
+                                addImage=F,
+                                Palette=NULL,
+                                pt_clrsp="Reds",
+                                ...){
+  
+  
+  
+  # Get Data ----------------------------------------------------------------
+  
+  scCoords <- getNucleusPosition(object)
+  
+  
+  coords_df <- 
+    getCoordsDf(object) %>% 
+    hlpr_join_with_color_by(object = object, 
+                            df = ., 
+                            color_by = color_by, 
+                            normalize = normalize, 
+                            smooth = smooth, 
+                            smooth_span = smooth_span)
+  
+  if(is.numeric(coords_df %>% pull(!!sym(color_by)))==T){
+    
+    message(paste0(Sys.time(), " ---- ", "Start 2D interpolation ", " ----"))
+    
+    x <- coords_df %>% pull(x)
+    y <- coords_df %>% pull(y)
+    z <- coords_df %>% pull(!!sym(color_by))
+    
+    s1 =  akima::interp(x = x, 
+                        y = y, 
+                        z = z, 
+                        nx = nrow(coords_df), 
+                        ny = nrow(coords_df), 
+                        xo = seq(min(x), max(x), length = nrow(coords_df)), 
+                        yo = seq(min(y), max(y), length = nrow(coords_df)))
+    
+    message(paste0(Sys.time(), " ---- ", "Predict single-cell expression levels ", " ----"))
+    
+    r.pred <- raster::raster(t(s1$z[,ncol(s1$z):1]), 
+                             xmn = min(scCoords$x), xmx = max(scCoords$x),
+                             ymn = min(scCoords$y), ymx = max(scCoords$y))
+    
+    pts <- sp::SpatialPointsDataFrame(scCoords[,c('x','y')], scCoords)
+    scCoords$pred <- raster::extract(r.pred, pts)
+    scCoords <- scCoords %>% filter(!is.na(pred))
+    
+    
+    if(addImage==T){p=SPATA2::plotSurface(object, display_image=T, pt_alpha = 0)}else{p=ggplot()+theme_void()}
+    if(alpha2pred==T){pt.alpha <- scCoords$pred}
+    
+    p=p+geom_point(data=scCoords, 
+                   aes(x=x, y=y, color=pred), 
+                   size=pt.size, 
+                   alpha=pt.alpha)
+    
+    if(is.null(Palette)){p=p+SPATA2::scale_color_add_on(aes = "color", 
+                                                        clrsp = pt_clrsp)}else{
+                                                          p=p+scale_colour_gradientn(colours = Palette(50), oob=scales::squish,...)
+                                                        }
+    p=p+ggplot2::coord_equal()
+    
+    
+    
+    
+    
+    
+  }else{
+    
+    message("missing")
+    
+    x <- coords_df %>% pull(x)
+    y <- coords_df %>% pull(y)
+    z <- coords_df %>% pull(!!sym(color_by))
+    
+    s1 =  akima::interp(x = x, 
+                        y = y, 
+                        z = z, 
+                        nx = nrow(coords_df), 
+                        ny = nrow(coords_df), 
+                        xo = seq(min(x), max(x), length = nrow(coords_df)), 
+                        yo = seq(min(y), max(y), length = nrow(coords_df)))
+    
+    message(paste0(Sys.time(), " ---- ", "Predict single-cell expression levels ", " ----"))
+    
+    r.pred <- raster::raster(t(s1$z[,ncol(s1$z):1]), 
+                             xmn = min(scCoords$x), xmx = max(scCoords$x),
+                             ymn = min(scCoords$y), ymx = max(scCoords$y))
+    
+    pts <- sp::SpatialPointsDataFrame(scCoords[,c('x','y')], scCoords)
+    scCoords$pred <- raster::extract(r.pred, pts)
+    scCoords <- scCoords %>% filter(!is.na(pred))
+    
+    
+    if(addImage==T){p=SPATA2::plotSurface(object, display_image=T, pt_alpha = 0)}else{p=ggplot()+theme_void()}
+    scCoords$pred <- round(scCoords$pred, digits = 0) %>% as.factor()
+    
+    p=p+geom_point(data=scCoords, 
+                   aes(x=x, y=y, color=pred), 
+                   size=pt.size, 
+                   alpha=pt.alpha)
+    p=p+ggplot2::coord_equal()
+    
+    
+  }
+  
+  
+  
+  
+  return(p)
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 

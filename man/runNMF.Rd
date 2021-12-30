@@ -26,11 +26,11 @@ runNMF(
 
 }
 \description{
-runNMF
+runNMF adopted from STutility
 }
 \examples{
 
 }
 \author{
-Dieter Henrik Heiland
+Dieter Henrik Heiland adopted from STutility
 }
