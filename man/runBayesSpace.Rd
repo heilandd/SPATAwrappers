@@ -2,7 +2,7 @@
 % Please edit documentation in R/cluster_family.R
 \name{runBayesSpace}
 \alias{runBayesSpace}
-\title{BaySpace Cluster}
+\title{runBayesSpace Cluster}
 \usage{
 runBayesSpace(
   object,
@@ -17,7 +17,7 @@ runBayesSpace(
 
 }
 \description{
-BaySpace Cluster
+runBayesSpace Cluster
 }
 \author{
 Dieter Henrik Heiland
