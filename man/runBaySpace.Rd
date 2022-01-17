@@ -9,7 +9,8 @@ runBaySpace(
   pathToOuts,
   Spatial.enhancer = T,
   max.cluster = 13,
-  return.model = T
+  return.model = T,
+  empty.remove = F
 )
 }
 \value{
