@@ -7,7 +7,7 @@
 #' @examples 
 #' @export
 
-runBaySpace <- function(object, pathToOuts, Spatial.enhancer=T, max.cluster=13, return.model=T){
+runBaySpace <- function(object, pathToOuts, Spatial.enhancer=T, max.cluster=13, return.model=T, empty.remove=F){
   
 
   sce <- BayesSpace::readVisium(pathToOuts)
@@ -16,6 +16,23 @@ runBaySpace <- function(object, pathToOuts, Spatial.enhancer=T, max.cluster=13, 
                                     rowData=SingleCellExperiment::rowData(sce))
 
   set.seed(102)
+
+  if(empty.remove==T){
+    sce <- sce[, colSums(counts(sce)) > 0]
+  }else{
+    spots.no.read= colData(sce[, colSums(counts(sce)) == 0]) %>% rownames()
+    #add 2 random reads
+    
+    sce@assays@data$counts[runif(n=length(spots.no.read), 
+                               min = 1, 
+                               max=nrow(sce@assays@data$counts)) %>% round(), spots.no.read] <-  1
+  }
+  
+  
+
+  
+  
+  
   space <- BayesSpace::spatialPreprocess(sce , platform="Visium", n.PCs=30, n.HVGs=2000, log.normalize=T)
   space <- BayesSpace::qTune(space, qs=seq(2, max.cluster), platform="Visium")
   #calculate the ellbow point
