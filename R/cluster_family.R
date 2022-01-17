@@ -1,7 +1,7 @@
 
-#' @title  BaySpace Cluster
+#' @title  runBayesSpace Cluster
 #' @author Dieter Henrik Heiland
-#' @description BaySpace Cluster
+#' @description runBayesSpace Cluster
 #' @inherit 
 #' @return 
 #' @examples 
@@ -12,28 +12,36 @@ runBayesSpace <- function(object, pathToOuts, Spatial.enhancer=T, max.cluster=13
 
   sce <- BayesSpace::readVisium(pathToOuts)
   sample <- SPATA2::getSampleNames(object)
-  object@data[[sample]]$SCE <- list(colData=SingleCellExperiment::colData(sce),
-                                    rowData=SingleCellExperiment::rowData(sce))
-
-  set.seed(102)
 
   if(empty.remove==T){
-    library(SingleCellExperiment)
+    require(SingleCellExperiment)
     sce <- sce[, colSums(SingleCellExperiment::counts(sce)) > 0]
   }else{
-    library(SingleCellExperiment)
-    spots.no.read= SingleCellExperiment::colData(sce[, colSums(SingleCellExperiment::counts(sce)) == 0]) %>% rownames()
-    #add 2 random reads
+    
+    spots.no.read <- 
+      SingleCellExperiment::counts(sce) %>% 
+      as.matrix() %>% 
+      colSums() %>% 
+      as.data.frame() %>% 
+      tibble::rownames_to_column("barcodes") %>% 
+      dplyr::filter(.==0) %>% 
+      dplyr::pull(barcodes)
+  if(length(spots.no.read)>0){
+    message(paste0(" --- Size factor was optimized ----"))
     
     sce@assays@data$counts[runif(n=length(spots.no.read), 
-                               min = 1, 
-                               max=nrow(sce@assays@data$counts)) %>% round(), spots.no.read] <-  1
+                                 min = 1, 
+                                 max=nrow(sce@assays@data$counts)) %>% round(), spots.no.read] <-  1
+    
+    
+  } 
+  
   }
   
   
-
-  
-  
+  object@data[[sample]]$SCE <- list(colData=SingleCellExperiment::colData(sce),
+                                    rowData=SingleCellExperiment::rowData(sce))
+  set.seed(102)
   
   space <- BayesSpace::spatialPreprocess(sce , platform="Visium", n.PCs=30, n.HVGs=2000, log.normalize=T)
   space <- BayesSpace::qTune(space, qs=seq(2, max.cluster), platform="Visium")
