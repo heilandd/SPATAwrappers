@@ -18,9 +18,9 @@ runBayesSpace <- function(object, pathToOuts, Spatial.enhancer=T, max.cluster=13
   set.seed(102)
 
   if(empty.remove==T){
-    sce <- sce[, SingleCellExperiment::colSums(SingleCellExperiment::counts(sce)) > 0]
+    sce <- sce[, colSums(SingleCellExperiment::counts(sce)) > 0]
   }else{
-    spots.no.read= SingleCellExperiment::colData(sce[, SingleCellExperiment::colSums(SingleCellExperiment::counts(sce)) == 0]) %>% rownames()
+    spots.no.read= SingleCellExperiment::colData(sce[, colSums(SingleCellExperiment::counts(sce)) == 0]) %>% rownames()
     #add 2 random reads
     
     sce@assays@data$counts[runif(n=length(spots.no.read), 
