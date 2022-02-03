@@ -1365,20 +1365,20 @@ plot2DInterpolation <- function(object,
     
     
     if(addImage==T){p=SPATA2::plotSurface(object, display_image=T, pt_alpha = 0)}else{p=ggplot()+theme_void()}
-    scCoords$pred <- round(scCoords$pred, digits = 0) 
+    scCoords$type <- round(scCoords$pred, digits = 0) 
+    scCoords$pred <- abs(1-c(c(scCoords$pred-scCoords$type)))*pt.alpha
     
-    
-    levels <- data.frame(pred=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
-    levels <- levels %>% filter(pred %in% unique(scCoords$pred))
-    scCoords$pred <- as.factor(scCoords$pred)
-    scCoords$pred <- factor(scCoords$pred,  labels = levels$real)
+    levels <- data.frame(type=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
+    levels <- levels %>% filter(type %in% unique(scCoords$type))
+    scCoords$type <- as.factor(scCoords$type)
+    scCoords$type <- factor(scCoords$type,  labels = levels$real)
     
 
     
     p=p+geom_point(data=scCoords, 
-                   aes(x=x, y=y, color=pred), 
-                   size=pt.size, 
-                   alpha=pt.alpha)
+                   aes(x=x, y=y, color=type), 
+                   size=pt.size,
+                   alpha=scCoords$pred)
     p=p+ggplot2::coord_equal()
     
     
