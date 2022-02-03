@@ -1382,7 +1382,7 @@ plot2DInterpolation <- function(object,
       levels <- levels %>% filter(type %in% unique(scCoords$type)) %>% arrange(type)
       
       scCoords$type <- as.factor(scCoords$type)
-      scCoords$type <- factor(scCoords$type,  labels = levels$real)
+      scCoords$type <- factor(scCoords$type,  labels = levels[,color_by])
       
       p=p+geom_point(data=scCoords, 
                      aes(x=x, y=y, color=type), 
