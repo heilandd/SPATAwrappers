@@ -16,6 +16,7 @@ plot2DInterpolation(
   addImage = F,
   Palette = NULL,
   pt_clrsp = "Reds",
+  remove.pred = NULL,
   ...
 )
 }

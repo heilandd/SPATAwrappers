@@ -1268,6 +1268,7 @@ plot2DInterpolation <- function(object,
                                 addImage=F,
                                 Palette=NULL,
                                 pt_clrsp="Reds",
+                                remove.pred=NULL,
                                 ...){
   
   
@@ -1366,19 +1367,44 @@ plot2DInterpolation <- function(object,
     
     if(addImage==T){p=SPATA2::plotSurface(object, display_image=T, pt_alpha = 0)}else{p=ggplot()+theme_void()}
     scCoords$type <- round(scCoords$pred, digits = 0) 
-    scCoords$pred <- abs(1-c(c(scCoords$pred-scCoords$type)))*pt.alpha
     
-    levels <- data.frame(type=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
-    levels <- levels %>% filter(type %in% unique(scCoords$type))
-    scCoords$type <- as.factor(scCoords$type)
-    scCoords$type <- factor(scCoords$type,  labels = levels$real)
+    
+    if(!is.null(remove.pred)){
+      
+      scCoords <- scCoords[scCoords$type==scCoords$pred, ]
+      
+      
+      levels <- data.frame(type=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
+      levels <- levels %>% filter(type %in% unique(scCoords$type))
+      scCoords$type <- as.factor(scCoords$type)
+      scCoords$type <- factor(scCoords$type,  labels = levels$real)
+      
+      p=p+geom_point(data=scCoords, 
+                     aes(x=x, y=y, color=type), 
+                     size=pt.size,
+                     alpha=pt.alpha)
+      
+    }else{
+      scCoords$pred <- abs(1-c(c(scCoords$pred-scCoords$type)))*pt.alpha
+      
+      levels <- data.frame(type=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
+      levels <- levels %>% filter(type %in% unique(scCoords$type))
+      scCoords$type <- as.factor(scCoords$type)
+      scCoords$type <- factor(scCoords$type,  labels = levels$real)
+      
+      p=p+geom_point(data=scCoords, 
+                     aes(x=x, y=y, color=type), 
+                     size=pt.size,
+                     alpha=scCoords$pred)
+      
+    }
+    
+    
+    
     
 
     
-    p=p+geom_point(data=scCoords, 
-                   aes(x=x, y=y, color=type), 
-                   size=pt.size,
-                   alpha=scCoords$pred)
+   
     p=p+ggplot2::coord_equal()
     
     
