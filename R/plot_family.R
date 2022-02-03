@@ -1346,7 +1346,7 @@ plot2DInterpolation <- function(object,
     z <- coords_df %>% pull(!!sym(color_by))
     
     z <- as.factor(z) 
-    levels <- data.frame(type= unique(z %>% as.numeric()), real=levels(z))
+    levels <- data.frame(type= unique(z %>% as.numeric()), real=unique(coords_df[,color_by]))
    
     z <- z %>% as.numeric()
     
