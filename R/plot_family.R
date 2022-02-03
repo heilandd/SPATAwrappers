@@ -1379,7 +1379,8 @@ plot2DInterpolation <- function(object,
       
       
       
-      levels <- levels %>% filter(type %in% unique(scCoords$type))
+      levels <- levels %>% filter(type %in% unique(scCoords$type)) %>% arrange(type)
+      
       scCoords$type <- as.factor(scCoords$type)
       scCoords$type <- factor(scCoords$type,  labels = levels$real)
       
@@ -1392,7 +1393,7 @@ plot2DInterpolation <- function(object,
       scCoords$pred <- abs(1-c(c(scCoords$pred-scCoords$type)))*pt.alpha
       
       
-      levels <- levels %>% filter(type %in% unique(scCoords$type))
+      levels <- levels %>% filter(type %in% unique(scCoords$type)) %>% arrange(type)
       scCoords$type <- as.factor(scCoords$type)
       scCoords$type <- factor(scCoords$type,  labels = levels$real)
       
