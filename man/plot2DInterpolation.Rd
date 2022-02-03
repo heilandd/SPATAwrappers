@@ -9,6 +9,7 @@ plot2DInterpolation(
   color_by,
   pt.size = 0.5,
   pt.alpha = 1,
+  normalize = T,
   alpha2pred = T,
   smooth = F,
   smooth_span = NULL,

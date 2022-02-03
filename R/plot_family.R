@@ -213,7 +213,10 @@ plotStreamlines <- function(VF,
     
     p= ggplot2::ggplot()+ggplot2::theme_void()
     if(surface==T){
-      p=p+geom_point(data=VF, mapping=aes(x,y, color=.data[[color.points]]), size=pt.size, alpha=pt.alpha)
+      if(color.points==parameter){ p=p+geom_point(data=VF, mapping=aes(x,y, color=parameter), size=pt.size, alpha=pt.alpha) }else{
+        p=p+geom_point(data=VF, mapping=aes(x,y, color=.data[[color.points]]), size=pt.size, alpha=pt.alpha)
+      }
+      
       p=p+ggplot2::scale_color_viridis_c(guide = "none")
     }
     p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
@@ -1258,6 +1261,7 @@ plot2DInterpolation <- function(object,
                                 color_by,  
                                 pt.size=0.5, 
                                 pt.alpha=1,
+                                normalize=T,
                                 alpha2pred=T,
                                 smooth=F, 
                                 smooth_span=NULL, 
@@ -1289,6 +1293,9 @@ plot2DInterpolation <- function(object,
     x <- coords_df %>% pull(x)
     y <- coords_df %>% pull(y)
     z <- coords_df %>% pull(!!sym(color_by))
+    
+    
+    
     
     s1 =  akima::interp(x = x, 
                         y = y, 

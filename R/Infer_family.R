@@ -102,16 +102,18 @@ inferSpatial.mc <- function(P1,P2, n = 599){
   #coef(M)[2]
   message(paste0(Sys.time(), "Start MC Simulation"))
   #MC
-  I.r <- purrr::map_dbl(.x=1:n, .f=function(i){
-    x <- sample(P1, replace=FALSE)
-    y <- P2
-    # Compute new set of lagged values
-    #x.lag <- lag.listw(lw, x)
-    # Compute the regression slope and store its value
-    M.r    <- glm(y ~ x)
-    I.r <- coef(M.r)[2]
-    return(I.r)
-  })
+  
+    I.r <- purrr::map_dbl(.x=1:n, .f=function(i){
+      x <- sample(P1, replace=FALSE)
+      y <- P2
+      # Compute new set of lagged values
+      #x.lag <- lag.listw(lw, x)
+      # Compute the regression slope and store its value
+      M.r    <- glm(y ~ x)
+      I.r <- coef(M.r)[2]
+      return(I.r)
+    })  
+
   
   #hist(I.r, main=NULL, xlab="Spatial-Cor-MC", las=1, xlim=c(-0.5,0.5))
   #abline(v=coef(M)[2], col="red")
@@ -125,6 +127,12 @@ inferSpatial.mc <- function(P1,P2, n = 599){
   names(out) <- c("Cor", "p")
   return(out)
 }
+
+
+
+
+
+
 
 #' @title  inferSpatial.mc
 #' @author Dieter Henrik Heiland
@@ -190,7 +198,7 @@ inferSpatial.ac <- function(object,feature, radius=5){
 #' @examples 
 #' 
 #' @export
-inferSpatial.plot <- function(object,feature, plot=T, radius=5){
+inferSpatial.plot <- function(object,feature, plot=T, radius=5, n_jobs=8){
   
   
   #Run analysis 
@@ -206,7 +214,7 @@ inferSpatial.plot <- function(object,feature, plot=T, radius=5){
                                n=200)
     return(cor.out$Cor)
     
-  }, mc.cores = 8) %>% unlist()
+  }, mc.cores = n_jobs) %>% unlist()
   
   message(paste0(Sys.time(), "  Run Auto Corelation analysis"))
   
