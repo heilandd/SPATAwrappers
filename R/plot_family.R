@@ -1419,8 +1419,7 @@ plot2DInterpolation <- function(object,
     
   }
   
-  if(is.null(Palette)){p=p+SPATA2::scale_color_add_on(aes = "color", 
-                                                      clrsp = pt_clrsp)}else{p=p+scale_colour_gradientn(colours = Palette(50), oob=scales::squish,...)}
+ 
   
   
   return(p)
