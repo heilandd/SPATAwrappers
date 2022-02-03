@@ -1287,6 +1287,7 @@ plot2DInterpolation <- function(object,
                             smooth = smooth, 
                             smooth_span = smooth_span)
   
+  
   if(is.numeric(coords_df %>% pull(!!sym(color_by)))==T){
     
     message(paste0(Sys.time(), " ---- ", "Start 2D interpolation ", " ----"))
@@ -1344,7 +1345,10 @@ plot2DInterpolation <- function(object,
     y <- coords_df %>% pull(y)
     z <- coords_df %>% pull(!!sym(color_by))
     
-    z <- as.factor(z) %>% as.numeric()
+    z <- as.factor(z) 
+    levels <- data.frame(type= unique(z %>% as.numeric()), real=levels(z))
+   
+    z <- z %>% as.numeric()
     
     s1 =  akima::interp(x = x, 
                         y = y, 
@@ -1374,7 +1378,7 @@ plot2DInterpolation <- function(object,
       scCoords <- scCoords[scCoords$type==scCoords$pred, ]
       
       
-      levels <- data.frame(type=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
+      
       levels <- levels %>% filter(type %in% unique(scCoords$type))
       scCoords$type <- as.factor(scCoords$type)
       scCoords$type <- factor(scCoords$type,  labels = levels$real)
@@ -1387,7 +1391,7 @@ plot2DInterpolation <- function(object,
     }else{
       scCoords$pred <- abs(1-c(c(scCoords$pred-scCoords$type)))*pt.alpha
       
-      levels <- data.frame(type=unique(z), real=coords_df[,color_by] %>% unique() %>% pull(!!sym(color_by)))
+      
       levels <- levels %>% filter(type %in% unique(scCoords$type))
       scCoords$type <- as.factor(scCoords$type)
       scCoords$type <- factor(scCoords$type,  labels = levels$real)
