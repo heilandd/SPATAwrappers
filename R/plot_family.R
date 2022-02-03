@@ -1390,12 +1390,15 @@ plot2DInterpolation <- function(object,
                      alpha=pt.alpha)
       
     }else{
-      scCoords$pred <- abs(1-c(c(scCoords$pred-scCoords$type)))*pt.alpha
+      scCoords<-  scCoords %>% mutate(pred3=case_when(
+        pred==type ~ pt.alpha,
+        pred!=type ~ abs(1-c(c(pred-type)))*pt.alpha
+      ))
       
-      
+        
       levels <- levels %>% filter(type %in% unique(scCoords$type)) %>% arrange(type)
       scCoords$type <- as.factor(scCoords$type)
-      scCoords$type <- factor(scCoords$type,  labels = levels$real)
+      scCoords$type <- factor(scCoords$type,  labels = levels[,color_by])
       
       p=p+geom_point(data=scCoords, 
                      aes(x=x, y=y, color=type), 
