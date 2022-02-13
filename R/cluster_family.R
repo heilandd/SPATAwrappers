@@ -117,13 +117,16 @@ runBayesSpace <- function(object, pathToOuts, Spatial.enhancer=T, max.cluster=13
 #' @export
 
 plotEnhancedNucleusFeature <- function(object, 
-                                       genes,
+                                       color_by,
+                                       normalize=T,
+                                       smooth=F,
+                                       smooth_span=NULL,
                                        pt.size=0.5, 
                                        pt.alpha=1,
                                        alpha2pred=F,
                                        addImage=F,
                                        Palette=NULL,
-                                       pt_clrsp="Reds"){
+                                       pt_clrsp="Reds",...){
 
   message(paste0(Sys.time(), " ---- ", "Get BayerSpace Enhanced Features ", " ----"))
   
@@ -140,17 +143,70 @@ plotEnhancedNucleusFeature <- function(object,
   space <- object@spatial[[sample]]$Space
   
 
-  space.enhanced <- BayesSpace::enhanceFeatures(space.enhanced, 
-
-                                                space,
-
-                                                feature_names=genes,
-
-                                                nrounds=0)
-
-  space.data <- as.data.frame(space.enhanced@colData)
   
-  space.data$z <- as.numeric(space.enhanced@assays@data$logcounts[genes, ])
+  # Extract data from BayesSpace --------------------------------------------
+  
+  #Get PCA Data
+  X.enhanced <- reducedDim(sce.enhanced, use.dimred)
+  X.ref <- reducedDim(sce.ref, "PCA")
+  d <- min(ncol(X.enhanced), ncol(X.ref))
+  
+  #return
+  X.enhanced <- X.enhanced[, seq_len(d)]
+  X.ref <- X.ref[, seq_len(d)]
+  
+  
+  
+  # Get feature data --------------------------------------------------------
+  require(tidyverse)
+  require(assertthat)
+  coords_df <- 
+    getCoordsDf(object) %>% 
+    SPATA2::hlpr_join_with_color_by(object = object, 
+                                    df = ., 
+                                    color_by = color_by, 
+                                    normalize = normalize, 
+                                    smooth = smooth, 
+                                    smooth_span = smooth_span)
+  
+  
+  feature_names <- color_by
+  Y.ref <- as.matrix(coords_df[,color_by]) %>% t()
+  colnames(Y.ref) <- coords_df$barcodes
+  
+  # Enhance feature data --------------------------------------------------------  
+  
+  #Parameter
+  altExp.type = NULL
+  feature.matrix = NULL
+  nrounds = 0
+  train.n = round(ncol(sce.ref) * 2/3)
+  
+  
+  
+  X.ref <- as.data.frame(X.ref)
+  X.enhanced <- as.data.frame(X.enhanced)
+  
+  r.squared <- numeric(length(feature_names))
+  names(r.squared) <- feature_names
+  
+  Y.enhanced <- matrix(nrow=length(feature_names), ncol=nrow(X.enhanced))
+  rownames(Y.enhanced) <- feature_names
+  colnames(Y.enhanced) <- rownames(X.enhanced)
+  
+  for (feature in feature_names) {
+    fit <- lm(Y.ref[feature, ] ~ ., data=X.ref)
+    r.squared[feature] <- summary(fit)$r.squared
+    Y.enhanced[feature, ] <- predict(fit, newdata=X.enhanced)
+  }
+  diagnostic <- list("r.squared"=r.squared)
+  attr(Y.enhanced, "diagnostic") <- diagnostic
+
+  Y.enhanced <- pmax(Y.enhanced, 0)
+  space.data$feature <- Y.enhanced[, rownames(space.data)] %>% as.numeric()
+  
+  
+  space.data$z <- space.data$feature
 
   scCoords <- SPATAwrappers::getNucleusPosition(object)
 
@@ -201,7 +257,7 @@ plotEnhancedNucleusFeature <- function(object,
   p=p+ggplot2::coord_equal()
   
   return(p)
-}
+} 
 
 
 #' @title  plotEnhancedCluster
