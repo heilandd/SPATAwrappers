@@ -142,7 +142,8 @@ plotEnhancedNucleusFeature <- function(object,
 
   space <- object@spatial[[sample]]$Space
   
-
+  
+  space.data <- as.data.frame(space.enhanced@colData)
   
   # Extract data from BayesSpace --------------------------------------------
   
