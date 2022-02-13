@@ -147,7 +147,7 @@ plotEnhancedNucleusFeature <- function(object,
   # Extract data from BayesSpace --------------------------------------------
   
   #Get PCA Data
-  X.enhanced <- reducedDim(sce.enhanced, use.dimred)
+  X.enhanced <- reducedDim(sce.enhanced, "PCA")
   X.ref <- reducedDim(sce.ref, "PCA")
   d <- min(ncol(X.enhanced), ncol(X.ref))
   
