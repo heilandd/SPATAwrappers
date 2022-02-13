@@ -180,7 +180,7 @@ plotEnhancedNucleusFeature <- function(object,
   altExp.type = NULL
   feature.matrix = NULL
   nrounds = 0
-  train.n = round(ncol(sce.ref) * 2/3)
+  train.n = round(ncol(space) * 2/3)
   
   
   
