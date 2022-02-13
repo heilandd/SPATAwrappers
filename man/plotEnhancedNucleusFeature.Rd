@@ -6,13 +6,17 @@
 \usage{
 plotEnhancedNucleusFeature(
   object,
-  genes,
+  color_by,
+  normalize = T,
+  smooth = F,
+  smooth_span = NULL,
   pt.size = 0.5,
   pt.alpha = 1,
   alpha2pred = F,
   addImage = F,
   Palette = NULL,
-  pt_clrsp = "Reds"
+  pt_clrsp = "Reds",
+  ...
 )
 }
 \value{
