@@ -333,6 +333,14 @@ inferEnhancedPCA <- function(object,
 
 
 
+#' @title  plotSPATAEnhancer
+#' @author Dieter Henrik Heiland
+#' @description plotSPATAEnhancer
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
 plotSPATAEnhancer <- function(object, 
                               color_by,
                               normalize=T,
