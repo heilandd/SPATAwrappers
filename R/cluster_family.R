@@ -261,6 +261,193 @@ plotEnhancedNucleusFeature <- function(object,
 } 
 
 
+#' @title  inferEnhancedPCA
+#' @author Dieter Henrik Heiland
+#' @description inferEnhancedPCA
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
+
+inferEnhancedPCA <- function(object, 
+                                cor=8,
+                                ram=10000
+                                ){
+  
+  message(paste0(Sys.time(), " ---- ", "Get BayerSpace Enhanced PCA ", " ----"))
+  
+  
+  #Get Space enhanced Feature
+  sample <- SPATA2::getSampleNames(object)
+  space.enhanced <- object@spatial[[sample]]$SpaceEnhancer
+  space <- object@spatial[[sample]]$Space
+  space.data <- as.data.frame(space.enhanced@colData)
+  
+  # Extract data from BayesSpace --------------------------------------------
+  require(SingleCellExperiment)
+  #Get PCA Data
+  X.enhanced <- reducedDim(space.enhanced, "PCA")
+  X.ref <- reducedDim(space, "PCA")
+  d <- min(ncol(X.enhanced), ncol(X.ref))
+  
+  #return
+  X.enhanced <- X.enhanced[, seq_len(d)]
+  X.ref <- X.ref[, seq_len(d)]
+  
+
+# Interpolate PCAs --------------------------------------------------------
+  
+  base::options(future.fork.enable = TRUE)
+  future::plan("multiprocess", workers = cor)
+  future::supportsMulticore()
+  base::options(future.globals.maxSize = ram * 1024^2)
+  message("... Run multicore ... ")
+  scCoords <- SPATAwrappers::getNucleusPosition(object)
+  
+  
+  Enhanced.df <- furrr::future_map(.x=1:ncol(X.enhanced), .f=function(i){
+    
+    input=data.frame(x=space.data$col, y=space.data$row, feature=X.enhanced[,i])
+    test <- sp::SpatialPointsDataFrame(input[,c("x", "y")], input)
+    r.pred <- raster::raster(as.matrix(interpolate(raster::rasterFromXYZ(input), 
+                                                   gstat::gstat(formula=feature~1, locations=test))), 
+                             xmn = min(scCoords$x), xmx = max(scCoords$x),
+                             ymn = min(scCoords$y), ymx = max(scCoords$y))
+    scCoords$pred <- raster::extract(r.pred, sp::SpatialPointsDataFrame(scCoords[,c('x','y')], scCoords))
+    
+    scCoords %>% dplyr::select(Cell, pred)
+    
+    return(scCoords)
+
+  }, .progress = T)
+  
+  PCA <- map_dfc(.x=1:length(Enhanced.df), .f=function(i){Enhanced.df[[i]] %>% dplyr::select(pred)}) %>% as.data.frame()
+  rownames(PCA) <- Enhanced.df[[1]]$Cell
+  names(PCA) <- paste0("PCA_", 1:length(Enhanced.df))
+  
+  object@spatial[[sample]]$EnhancedPCA <- PCA
+  return(object)
+  
+} 
+
+
+
+plotSPATAEnhancer <- function(object, 
+                              color_by,
+                              normalize=T,
+                              smooth=F,
+                              smooth_span=NULL,
+                              pt.size=0.5, 
+                              pt.alpha=1,
+                              alpha2pred=F,
+                              addImage=F,
+                              Palette=NULL,
+                              pt_clrsp="Reds",...){
+  
+  message(paste0(Sys.time(), " ---- ", "Get BayerSpace Enhanced Features ", " ----"))
+  
+  
+  #Get Space enhanced Feature
+  sample <- SPATA2::getSampleNames(object)
+  space.enhanced <- object@spatial[[sample]]$SpaceEnhancer
+  space <- object@spatial[[sample]]$Space
+  space.data <- as.data.frame(space.enhanced@colData)
+  
+  
+  # Extract data from BayesSpace --------------------------------------------
+  require(SingleCellExperiment)
+  #Get PCA Data
+  
+  if(is.null(object@spatial[[sample]]$EnhancedPCA)) stop("Please run inferEnhancedPCA() before")
+  
+  X.enhanced <- object@spatial[[sample]]$EnhancedPCA
+  X.ref <- reducedDim(space, "PCA")
+  d <- min(ncol(X.enhanced), ncol(X.ref))
+  
+  #return
+  X.enhanced <- X.enhanced[, seq_len(d)]
+  X.ref <- X.ref[, seq_len(d)]
+  
+  
+  
+  # Get feature data --------------------------------------------------------
+  require(tidyverse)
+  require(assertthat)
+  coords_df <- 
+    getCoordsDf(object) %>% 
+    SPATA2::hlpr_join_with_color_by(object = object, 
+                                    df = ., 
+                                    color_by = color_by, 
+                                    normalize = normalize, 
+                                    smooth = smooth, 
+                                    smooth_span = smooth_span)
+  
+  
+  feature_names <- color_by
+  Y.ref <- as.matrix(coords_df[,color_by]) %>% t()
+  colnames(Y.ref) <- coords_df$barcodes
+  
+  # Enhance feature data --------------------------------------------------------  
+  
+  #Parameter
+  altExp.type = NULL
+  feature.matrix = NULL
+  nrounds = 0
+  train.n = round(ncol(space) * 2/3)
+  
+  
+  
+  X.ref <- as.data.frame(X.ref)
+  X.enhanced <- as.data.frame(X.enhanced)
+  names(X.enhanced) <- names(X.ref)
+  
+  r.squared <- numeric(length(feature_names))
+  names(r.squared) <- feature_names
+  
+  Y.enhanced <- matrix(nrow=length(feature_names), ncol=nrow(X.enhanced))
+  rownames(Y.enhanced) <- feature_names
+  colnames(Y.enhanced) <- rownames(X.enhanced)
+  
+  for (feature in feature_names) {
+    fit <- lm(Y.ref[feature, ] ~ ., data=X.ref)
+    r.squared[feature] <- summary(fit)$r.squared
+    Y.enhanced[feature, ] <- predict(fit, newdata=X.enhanced)
+  }
+  diagnostic <- list("r.squared"=r.squared)
+  attr(Y.enhanced, "diagnostic") <- diagnostic
+  
+  Y.enhanced <- pmax(Y.enhanced, 0)
+  scCoords <- SPATAwrappers::getNucleusPosition(object)
+  scCoords$pred<- Y.enhanced[, scCoords$Cell] %>% as.numeric()
+  scCoords$pred <- SPATA2::hlpr_normalize_vctr(scCoords$pred)
+  
+  
+  if(addImage==T){p=SPATA2::plotSurface(object, display_image=T, pt_alpha = 0)}else{p=ggplot()+theme_void()}
+  
+  
+  if(alpha2pred==T){pt.alpha <- scCoords$pred}
+  
+  p=p+geom_point(data=scCoords, aes(x=x, y=y, color=pred), size=pt.size, alpha=pt.alpha)
+  
+  if(is.null(Palette)){p=p+SPATA2::scale_color_add_on(aes = "color", 
+                                                      clrsp = pt_clrsp)}else{p=p+scale_colour_gradientn(colours = Palette(50), oob=scales::squish,...)}
+  
+  
+  p=p+ggplot2::coord_equal()
+  
+  return(p)
+}
+
+
+
+
+
+
+
+
+
+
 #' @title  plotEnhancedCluster
 #' @author Dieter Henrik Heiland
 #' @description plotEnhancedCluster
