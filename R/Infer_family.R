@@ -94,7 +94,7 @@ inferJuxtaposition <- function(object,
 #' 
 #' @export
 #' 
-inferSpatial.mc <- function(P1,P2, n = 599){
+inferSpatial.mc <- function(object,P1,P2, n = 599){
   # Monte-Carlo Simulation of spatial correlation
   if(length(P2)!=length(P1)) stop("Unequal Inputs")
   message(paste0(Sys.time(), "Start Model"))
