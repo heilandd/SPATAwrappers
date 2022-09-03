@@ -4,7 +4,7 @@
 \alias{inferSpatial.mc}
 \title{inferSpatial.mc}
 \usage{
-inferSpatial.mc(P1, P2, n = 599)
+inferSpatial.mc(object, P1, P2, n = 599)
 }
 \value{
 

@@ -271,9 +271,9 @@ plotEnhancedNucleusFeature <- function(object,
 #' @export
 
 inferEnhancedPCA <- function(object, 
-                                cor=8,
-                                ram=10000
-                                ){
+                             cor=8,
+                             ram=10000
+){
   
   message(paste0(Sys.time(), " ---- ", "Get BayerSpace Enhanced PCA ", " ----"))
   
@@ -283,46 +283,49 @@ inferEnhancedPCA <- function(object,
   space.enhanced <- object@spatial[[sample]]$SpaceEnhancer
   space <- object@spatial[[sample]]$Space
   space.data <- as.data.frame(space.enhanced@colData)
+  models <- object@spatial[[sample]]$IDWModels
   
   # Extract data from BayesSpace --------------------------------------------
-  require(SingleCellExperiment)
-  #Get PCA Data
-  X.enhanced <- reducedDim(space.enhanced, "PCA")
-  X.ref <- reducedDim(space, "PCA")
+  
+  X.enhanced <- SingleCellExperiment::reducedDim(space.enhanced, "PCA")
+  X.ref <- SingleCellExperiment::reducedDim(space, "PCA")
   d <- min(ncol(X.enhanced), ncol(X.ref))
   
   #return
   X.enhanced <- X.enhanced[, seq_len(d)]
   X.ref <- X.ref[, seq_len(d)]
   
-
-# Interpolate PCAs --------------------------------------------------------
   
-  base::options(future.fork.enable = TRUE)
-  future::plan("multiprocess", workers = cor)
-  future::supportsMulticore()
-  base::options(future.globals.maxSize = ram * 1024^2)
-  message("... Run multicore ... ")
+  # Interpolate PCAs --------------------------------------------------------
+  
   scCoords <- SPATAwrappers::getNucleusPosition(object)
   
   
-  Enhanced.df <- furrr::future_map(.x=1:ncol(X.enhanced), .f=function(i){
+  Enhanced.df <- purrr::map(.x=1:ncol(X.enhanced), .f=function(i){
+    
+    library(raster)
+    library(gstat)
     
     input=data.frame(x=space.data$col, y=space.data$row, feature=X.enhanced[,i])
     test <- sp::SpatialPointsDataFrame(input[,c("x", "y")], input)
-    r.pred <- raster::raster(as.matrix(interpolate(raster::rasterFromXYZ(input), 
-                                                   gstat::gstat(formula=feature~1, locations=test))), 
+    gstat <- gstat::gstat(formula=feature~1, locations=test)
+    r <- raster::rasterFromXYZ(xyz=input)
+    
+    inter <- interpolate(r, gstat)
+    
+    r.pred <- raster::raster(as.matrix(inter), 
                              xmn = min(scCoords$x), xmx = max(scCoords$x),
                              ymn = min(scCoords$y), ymx = max(scCoords$y))
-    scCoords$pred <- raster::extract(r.pred, sp::SpatialPointsDataFrame(scCoords[,c('x','y')], scCoords))
     
-    scCoords %>% dplyr::select(Cell, pred)
+    
+    scCoords$pred <- raster::extract(r.pred, sp::SpatialPointsDataFrame(scCoords[,c('x','y')], scCoords))
+    scCoords <- scCoords %>% dplyr::select(Cell, pred)
     
     return(scCoords)
-
-  }, .progress = T)
+    
+  })
   
-  PCA <- map_dfc(.x=1:length(Enhanced.df), .f=function(i){Enhanced.df[[i]] %>% dplyr::select(pred)}) %>% as.data.frame()
+  PCA <- purrr::map_dfc(.x=1:length(Enhanced.df), .f=function(i){Enhanced.df[[i]] %>% dplyr::select(pred)}) %>% as.data.frame()
   rownames(PCA) <- Enhanced.df[[1]]$Cell
   names(PCA) <- paste0("PCA_", 1:length(Enhanced.df))
   

@@ -1429,7 +1429,77 @@ plot2DInterpolation <- function(object,
 
 
 
+#' @title  plotSurfaceMixed
+#' @author Dieter Henrik Heiland
+#' @description Plot multiple parameter from the feature data.frame 
+#' @param object SPATA2 object
+#' @param Mixed Character value. Specifies the order and features that should be vizualized
+#' @param mixed.colors colors from the palettes: colourvalues::color_palettes()
+#' @param smooth Logical. If TRUE, a loess fit is used to smooth the values.
+#' @param smooth_span Numeric value. Controls the degree of smoothing. Given to argument span of stats::loess().
+#' @param pt_size Numeric value. Specifies the size of all points.
+#' @param pt_alpha Logical. If TRUE, the feature will be used as alpha
+#' @param display_image Logical. If set to TRUE the histology image of the specified sample is displayed underneath the plot.
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
 
+
+plotSurfaceMixed <- function(object, 
+                             Mixed, 
+                             mixed.colors, 
+                             smooth=T,
+                             smooth_span=NULL,
+                             pt_size=2.5,
+                             pt_alpha=T,
+                             display_image=F){
+  
+  df <- SPATA2::joinWith(object, features=Mixed, normalize = T, smooth = smooth, smooth_span = smooth_span)
+  
+  #Annotate celltype to spot
+  
+  df <- 
+    df %>% 
+    dplyr::mutate(cell.type=purr::map(.x=1:nrow(df), .f=function(i){Mixed[which.max(df[i,Mixed])]}) %>% unlist(),
+                  cell.type.score=purr::map(.x=1:nrow(df), .f=function(i){df[i,Mixed[which.max(df[i,Mixed])]]}) %>% unlist())
+  
+  df <- purr::map_dfr(.x=1:length(unique(df$cell.type)), .f=function(i){
+    
+    cell.types.call <- as.character(unique(df$cell.type))
+    #print(i)
+    if( nrow(dplyr::filter(df, cell.type == cell.types.call[i]))>0){
+      df.out <- 
+        df %>% 
+        dplyr::filter(cell.type==cell.types.call[i]) %>%
+        mutate(colors=colourvalues::color_values(cell.type.score, palette = mixed.colors[i]))
+    }
+    
+    
+    return(df.out)
+    
+    
+    
+  })
+  
+  
+  if(pt_alpha==T){
+    alpha=df$cell.type.score
+  }else{alpha=1}
+  if(display_image==T){
+    p <- plotSurface(object, pt_alpha = 0)
+  }else{p <- 
+    ggplot()+
+    theme_classic()+
+    coord_fixed()}
+  
+  
+  
+  p+geom_point(data=df, mapping=aes(x=x, y=y, alpha=alpha), color=df$colors, size=pt_size)
+  
+  
+}
 
 
 

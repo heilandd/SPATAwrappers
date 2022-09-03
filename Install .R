@@ -11,3 +11,5 @@ library(SPATAwrappers)
 
 
 devtools::install_github("heilandd/SPATAwrappers")
+
+object@spatial$`334_T`$Cell_coords
