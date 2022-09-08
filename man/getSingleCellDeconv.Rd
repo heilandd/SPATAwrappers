@@ -14,6 +14,19 @@ getSingleCellDeconv(
   scale_factor = NULL
 )
 }
+\arguments{
+\item{object}{SPATA2 object}
+
+\item{deconv_cell_types}{Character value of all celltypes (from the feature data.frame) should be used}
+
+\item{spot_extension}{Numeric value between 0 and 0.7. Specifies extension of the spot radius to include more cells. For example, a spot extension of 0.2 will increase the spot radius of 20\%)}
+
+\item{multicore}{Logical. If TRUE will be run on all cores (recommended)}
+
+\item{flip.y}{Logical. If TRUE y axis will be flipped}
+
+\item{scale_factor}{Numeric value, if adjustment of the SPATAwrappers::getNucleusPosition() is required}
+}
 \value{
 
 }
