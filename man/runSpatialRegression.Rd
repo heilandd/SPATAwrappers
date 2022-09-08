@@ -6,14 +6,22 @@
 \usage{
 runSpatialRegression(object, features, model, smooth = F, normalize = F)
 }
+\arguments{
+\item{object}{SPATA2 object}
+
+\item{features}{Character of all factors to be correlated (features/genes/GeneSets)}
+
+\item{model}{The model to be used: classical:Pearson Correlation; lmSLX, lagsarlm, errorsarlm, CCA or dist}
+
+\item{smooth}{Logical, if TRUE spatial smooth values}
+
+\item{normalize}{Logical, if TRUE normalize values}
+}
 \value{
 
 }
 \description{
 runSpatialRegression
-}
-\examples{
-
 }
 \author{
 Dieter Henrik Heiland

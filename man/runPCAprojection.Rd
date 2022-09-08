@@ -19,9 +19,6 @@ runPCAprojection(
 \description{
 run.full.cluster.validation
 }
-\examples{
-
-}
 \author{
 Dieter Henrik Heiland
 }

@@ -263,7 +263,6 @@ runFullclustervalidation <- function(seuratObj, plot.folder){
 #' @inherit 
 #' @return 
 #' @examples 
-#' 
 #' @export
 runPCAprojection <- function(PCA,
                              matrix.input, 
@@ -388,10 +387,14 @@ runPCAprojection <- function(PCA,
 #' @title  runSpatialRegression
 #' @author Dieter Henrik Heiland
 #' @description runSpatialRegression
+#' @param object SPATA2 object
+#' @param features Character of all factors to be correlated (features/genes/GeneSets)
+#' @param model The model to be used: classical:Pearson Correlation; lmSLX, lagsarlm, errorsarlm, CCA or dist
+#' @param smooth Logical, if TRUE spatial smooth values
+#' @param normalize Logical, if TRUE normalize values
 #' @inherit 
 #' @return 
 #' @examples 
-#' 
 #' @export
 runSpatialRegression <- function (object, features, model, smooth = F, normalize = F) {
   color_var <- SPATA2::hlpr_join_with_aes(object, df = SPATA2::getCoordsDf(object), 
