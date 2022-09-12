@@ -1509,6 +1509,7 @@ plotSurfaceMixed <- function(object,
 #' @param feature2 Character value. feature or gene to plot
 #' @param two.colors Character value, two colors 
 #' @param get.map Logical.If TRUE plot only the color map
+#' @param as.layer Logical.If TRUE plot only return gglayer
 #' @param smooth Logical. If TRUE, a loess fit is used to smooth the values.
 #' @param smooth_span Numeric value. Controls the degree of smoothing. Given to argument span of stats::loess().
 #' @param pt_size Numeric value. Specifies the size of all points.
@@ -1527,6 +1528,7 @@ plotColorOverlap <- function(object,
                              feature2,
                              pt_size=3,
                              get.map=F,
+                             as.layer=F,
                              two.colors = c("purple", "lightgreen"),
                              negative.color = "darkgrey",
                              col.threshold = 0.8,

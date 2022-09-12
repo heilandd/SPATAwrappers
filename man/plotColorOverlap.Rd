@@ -10,6 +10,7 @@ plotColorOverlap(
   feature2,
   pt_size = 3,
   get.map = F,
+  as.layer = F,
   two.colors = c("purple", "lightgreen"),
   negative.color = "darkgrey",
   col.threshold = 0.8,
@@ -28,6 +29,8 @@ plotColorOverlap(
 \item{pt_size}{Numeric value. Specifies the size of all points.}
 
 \item{get.map}{Logical.If TRUE plot only the color map}
+
+\item{as.layer}{Logical.If TRUE plot only return gglayer}
 
 \item{two.colors}{Character value, two colors}
 
