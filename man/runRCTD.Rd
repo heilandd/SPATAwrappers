@@ -4,7 +4,7 @@
 \alias{runRCTD}
 \title{runRCTD cell-type deconvolution}
 \usage{
-runRCTD(object, ref, cell_type_var, overwrite = T)
+runRCTD(object, ref, cell_type_var, overwrite = T, return.RCTD = F)
 }
 \arguments{
 \item{object}{The variale in the Seurat meta.data file containing the cell type group}

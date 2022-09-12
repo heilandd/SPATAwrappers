@@ -12,7 +12,7 @@
 #' @examples 
 #' @export
 #' 
-runRCTD <- function(object,ref, cell_type_var, overwrite=T){
+runRCTD <- function(object,ref, cell_type_var, overwrite=T, return.RCTD=F){
   
   #Some check up
   if(!any("cell_type_var" %in% names(ref@meta.data))) stop(paste0("The variable: ",cell_type_var, " was not found in the seurat object"))
@@ -48,27 +48,36 @@ runRCTD <- function(object,ref, cell_type_var, overwrite=T){
   myRCTD <- spacexr::create.RCTD(puck, reference, max_cores = 5)
   myRCTD <- spacexr::run.RCTD(myRCTD, doublet_mode = "doublet")
   
+  if(return.RCTD==T){
+    object <- myRCTD
+  }else{
+    
+    
+    # Get Results
+    results <- myRCTD@results
+    norm_weights = spacexr::normalize_weights(results$weights)
+    cell_type_names <- myRCTD@cell_type_info$info[[2]]
+    spatialRNA <- myRCTD@spatialRNA
+    
+    #Create output
+    
+    norm_weights <- 
+      norm_weights %>% 
+      as.data.frame() %>% 
+      tibble::rownames_to_column("barcodes") %>% 
+      dplyr::left_join(object %>% 
+                         SPATA2::getCoordsDf() %>% 
+                         dplyr::select(barcodes),., by = "barcodes")
+    
+    norm_weights[is.na(norm_weights)] <- 0
+    
+    object <- object %>% SPATA2::addFeatures(., norm_weights, overwrite = overwrite)
+
+    
+  }
   
+
   
-  # Get Results
-  results <- myRCTD@results
-  norm_weights = spacexr::normalize_weights(results$weights)
-  cell_type_names <- myRCTD@cell_type_info$info[[2]]
-  spatialRNA <- myRCTD@spatialRNA
-  
-  #Create output
-  
-  norm_weights <- 
-    norm_weights %>% 
-    as.data.frame() %>% 
-    tibble::rownames_to_column("barcodes") %>% 
-    dplyr::left_join(object %>% 
-                       SPATA2::getCoordsDf() %>% 
-                       dplyr::select(barcodes),., by = "barcodes")
-  
-  norm_weights[is.na(norm_weights)] <- 0
-  
-  object <- object %>% SPATA2::addFeatures(., norm_weights, overwrite = overwrite)
   return(object)
 }
 
