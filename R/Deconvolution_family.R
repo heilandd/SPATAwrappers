@@ -17,7 +17,7 @@ runRCTD <- function(object,ref, cell_type_var, overwrite=T, return.RCTD=F){
   #Some check up
   if(!any(cell_type_var %in% names(ref@meta.data))) stop(paste0("The variable: ",cell_type_var, " was not found in the seurat object"))
   SPATA2::check_object(object)
-  
+  cluster <- cell_type_var
   #Load some packages
   library(spacexr)
   library(Matrix)
