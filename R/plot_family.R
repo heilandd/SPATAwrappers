@@ -1501,9 +1501,204 @@ plotSurfaceMixed <- function(object,
   
 }
 
+#' @title  plotColorOverlap
+#' @author Dieter Henrik Heiland
+#' @description Plot overlap (Adopted from the Seurat Package)
+#' @param object SPATA2 object
+#' @param feature1 Character value. feature or gene to plot
+#' @param feature2 Character value. feature or gene to plot
+#' @param two.colors Character value, two colors 
+#' @param get.map Logical.If TRUE plot only the color map
+#' @param smooth Logical. If TRUE, a loess fit is used to smooth the values.
+#' @param smooth_span Numeric value. Controls the degree of smoothing. Given to argument span of stats::loess().
+#' @param pt_size Numeric value. Specifies the size of all points.
+#' @param negative.color Character value, negative color
+#' @param col.threshold Balance the colors
+#' @param normalize Normalize Values
+#' @inherit 
+#' @return 
+#' @examples 
+#' 
+#' @export
 
 
+plotColorOverlap <- function(object,
+                             feature1,
+                             feature2,
+                             pt_size=3,
+                             get.map=F,
+                             two.colors = c("purple", "lightgreen"),
+                             negative.color = "darkgrey",
+                             col.threshold = 0.8,
+                             smooth=T,
+                             smooth_span = 0.2,
+                             normalize=T){
+  
+  features <- c(feature1, feature2)
+  
+  data <- SPATA2::hlpr_join_with_aes(object, 
+                                          df = SPATA2::getCoordsDf(object), 
+                                          color_by = features, 
+                                          normalize = normalize, 
+                                          smooth = smooth,
+                                     smooth_span=smooth_span)
 
+
+  library(reshape2)
+
+  BlendExpression <- function(data) {
+    if (ncol(x = data) != 2) {
+      stop("'BlendExpression' only blends two features")
+    }
+    features <- colnames(x = data)
+    data <- as.data.frame(x = apply(
+      X = data,
+      MARGIN = 2,
+      FUN = function(x) {
+        return(round(x = 9 * (x - min(x)) / (max(x) - min(x))))
+      }
+    ))
+    data[, 3] <- data[, 1] + data[, 2] * 10
+    colnames(x = data) <- c(features, paste(features, collapse = '_'))
+    for (i in 1:ncol(x = data)) {
+      data[, i] <- factor(x = data[, i])
+    }
+    return(data)
+  }
+  BlendMatrix <- function(
+    n = 10,
+    col.threshold = 0.5,
+    two.colors = c("#ff0000", "#00ff00"),
+    negative.color = "black"
+  ) {
+    if (0 > col.threshold || col.threshold > 1) {
+      stop("col.threshold must be between 0 and 1")
+    }
+    C0 <- as.vector(col2rgb(negative.color, alpha = TRUE))
+    C1 <- as.vector(col2rgb(two.colors[1], alpha = TRUE))
+    C2 <- as.vector(col2rgb(two.colors[2], alpha = TRUE))
+    blend_alpha <- (C1[4] + C2[4])/2
+    C0 <- C0[-4]
+    C1 <- C1[-4]
+    C2 <- C2[-4]
+    merge.weight <- min(255 / (C1 + C2 +  C0 + 0.01))
+    sigmoid <- function(x) {
+      return(1 / (1 + exp(-x)))
+    }
+    blend_color <- function(
+      i,
+      j,
+      col.threshold,
+      n,
+      C0,
+      C1,
+      C2,
+      alpha,
+      merge.weight
+    ) {
+      c.min <- sigmoid(5 * (1 / n - col.threshold))
+      c.max <- sigmoid(5 * (1 - col.threshold))
+      c1_weight <- sigmoid(5 * (i / n - col.threshold))
+      c2_weight <- sigmoid(5 * (j / n - col.threshold))
+      c0_weight <-  sigmoid(5 * ((i + j) / (2 * n) - col.threshold))
+      c1_weight <- (c1_weight - c.min) / (c.max - c.min)
+      c2_weight <- (c2_weight - c.min) / (c.max - c.min)
+      c0_weight <- (c0_weight - c.min) / (c.max - c.min)
+      C1_length <- sqrt(sum((C1 - C0) ** 2))
+      C2_length <- sqrt(sum((C2 - C0) ** 2))
+      C1_unit <- (C1 - C0) / C1_length
+      C2_unit <- (C2 - C0) / C2_length
+      C1_weight <- C1_unit * c1_weight
+      C2_weight <- C2_unit * c2_weight
+      C_blend <- C1_weight * (i - 1) * C1_length / (n - 1) + C2_weight * (j - 1) * C2_length / (n - 1) + (i - 1) * (j - 1) * c0_weight * C0 / (n - 1) ** 2 + C0
+      C_blend[C_blend > 255] <- 255
+      C_blend[C_blend < 0] <- 0
+      return(rgb(
+        red = C_blend[1],
+        green = C_blend[2],
+        blue = C_blend[3],
+        alpha = alpha,
+        maxColorValue = 255
+      ))
+    }
+    blend_matrix <- matrix(nrow = n, ncol = n)
+    for (i in 1:n) {
+      for (j in 1:n) {
+        blend_matrix[i, j] <- blend_color(
+          i = i,
+          j = j,
+          col.threshold = col.threshold,
+          n = n,
+          C0 = C0,
+          C1 = C1,
+          C2 = C2,
+          alpha = blend_alpha,
+          merge.weight = merge.weight
+        )
+      }
+    }
+    return(blend_matrix)
+  }
+  
+  BlendMap <- function(color.matrix) {
+    color.heat <- matrix(
+      data = 1:prod(dim(x = color.matrix)) - 1,
+      nrow = nrow(x = color.matrix),
+      ncol = ncol(x = color.matrix),
+      dimnames = list(
+        1:nrow(x = color.matrix),
+        1:ncol(x = color.matrix)
+      )
+    )
+    xbreaks <- seq.int(from = 0, to = nrow(x = color.matrix), by = 2)
+    ybreaks <- seq.int(from = 0, to = ncol(x = color.matrix), by = 2)
+    color.heat <- melt(color.heat)
+    names(color.heat) <- c("rows", "cols", "vals")
+    color.heat$rows <- as.numeric(x = as.character(x = color.heat$rows))
+    color.heat$cols <- as.numeric(x = as.character(x = color.heat$cols))
+    color.heat$vals <- factor(x = color.heat$vals)
+    plot <- ggplot(
+      data = color.heat,
+      mapping = aes_string(x = 'rows', y = 'cols', fill = 'vals')
+    ) +
+      geom_raster(show.legend = FALSE) +
+      theme(plot.margin = unit(x = rep.int(x = 0, times = 4), units = 'cm')) +
+      scale_x_continuous(breaks = xbreaks, expand = c(0, 0), labels = xbreaks) +
+      scale_y_continuous(breaks = ybreaks, expand = c(0, 0), labels = ybreaks) +
+      scale_fill_manual(values = as.vector(x = color.matrix)) +
+      theme_classic()
+    return(plot)
+  }
+  
+
+  BlendExpression(data[,features])
+  
+  color.matrix <- BlendMatrix(n=50,
+                              two.colors = two.colors,
+                              col.threshold = col.threshold,
+                              negative.color = negative.color)
+  if(get.map==T){BlendMap(color.matrix)}else{
+    
+    a <-  scales::rescale(data %>% pull(feature1), to=c(1,ncol(color.matrix))) %>% as.integer()
+    b <- scales::rescale(data %>% pull(feature2), to=c(1,nrow(color.matrix))) %>% as.integer()
+    
+    color=map_chr(.x=1:nrow(data), .f=function(i){
+      color.matrix[a[i], b[i]]
+    })
+    
+    
+    
+    if(as.layer==T){
+      p=geom_point(data=data, mapping=aes(x=x, y=y),size=pt_size, color=color)
+    }else{
+      p=ggplot(data, mapping=aes(x=x, y=y))+geom_point(size=pt_size, color=color)+coord_fixed()+theme_void()
+    }
+  }
+  
+  return(p)
+  
+  
+}
 
 
 
