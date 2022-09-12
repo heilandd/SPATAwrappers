@@ -1679,7 +1679,9 @@ plotColorOverlap <- function(object,
                               two.colors = two.colors,
                               col.threshold = col.threshold,
                               negative.color = negative.color)
-  if(get.map==T){BlendMap(color.matrix)}else{
+  if(get.map==T){
+    p=BlendMap(color.matrix)
+    }else{
     
     a <-  scales::rescale(data %>% pull(feature1), to=c(1,ncol(color.matrix))) %>% as.integer()
     b <- scales::rescale(data %>% pull(feature2), to=c(1,nrow(color.matrix))) %>% as.integer()
