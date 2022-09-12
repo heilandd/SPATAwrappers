@@ -748,7 +748,7 @@ getSubColors <- function(tab,
   out2 <- map_dfr(.x=1:length(class_unique), .f=function(i){
     x <- 
       out %>% 
-      dplyr::ilter(!!sym(class)==class_unique[i])
+      dplyr::filter(!!sym(class)==class_unique[i])
     a <- nrow(x)
     x <- x %>% 
       dplyr::mutate(colors=colorRampPalette(color=c(into,color_L1[i]))(a+add_n)[c(1+add_n):c(a+add_n)] %>% rev() )
