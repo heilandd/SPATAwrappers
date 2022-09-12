@@ -702,14 +702,14 @@ runMapping <- function(object,
 #' @author Dieter Henrik Heiland
 #' @description Mapping the output of "getSingleCellDeconv()"to the best matching cell from the reference dataset
 #' @inherit 
-#' @tab Input data of the class data.frame
-#' @class Character value; The col containing the main class
-#' @subclass Character value; The col containing the subclass
-#' @pal Character value; Color pal from brewer.pal()
-#' @random Logical. If TRUE random mixing colors from pal
-#' @seed Integer value. set.seed() for constant color alignment
-#' @into Character value; The color for non-classified samples
-#' @add_n Integer value. Adopting the contrast of the subclass colors
+#' @param tab Input data of the class data.frame
+#' @param class Character value; The col containing the main class
+#' @param subclass Character value; The col containing the subclass
+#' @param pal Character value; Color pal from brewer.pal()
+#' @param random Logical. If TRUE random mixing colors from pal
+#' @param seed Integer value. set.seed() for constant color alignment
+#' @param into Character value; The color for non-classified samples
+#' @param add_n Integer value. Adopting the contrast of the subclass colors
 #' @return 
 #' @examples 
 #' @export
@@ -748,7 +748,7 @@ getSubColors <- function(tab,
   out2 <- map_dfr(.x=1:length(class_unique), .f=function(i){
     x <- 
       out %>% 
-      fdplyr::ilter(!!sym(class)==class_unique[i])
+      dplyr::ilter(!!sym(class)==class_unique[i])
     a <- nrow(x)
     x <- x %>% 
       dplyr::mutate(colors=colorRampPalette(color=c(into,color_L1[i]))(a+add_n)[c(1+add_n):c(a+add_n)] %>% rev() )

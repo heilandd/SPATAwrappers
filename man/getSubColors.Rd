@@ -16,6 +16,23 @@ getSubColors(
   add_n = 1
 )
 }
+\arguments{
+\item{tab}{Input data of the class data.frame}
+
+\item{class}{Character value; The col containing the main class}
+
+\item{subclass}{Character value; The col containing the subclass}
+
+\item{pal}{Character value; Color pal from brewer.pal()}
+
+\item{random}{Logical. If TRUE random mixing colors from pal}
+
+\item{seed}{Integer value. set.seed() for constant color alignment}
+
+\item{into}{Character value; The color for non-classified samples}
+
+\item{add_n}{Integer value. Adopting the contrast of the subclass colors}
+}
 \value{
 
 }
