@@ -6,29 +6,71 @@
 \usage{
 plotStreamlines(
   VF,
-  parameter,
-  size.arrow = 1,
+  features,
+  display.image = T,
+  size.arrow = 1.5,
   surface = T,
+  color_stream = "black",
+  n = NULL,
+  dt = NULL,
   grid = c(50, 50),
   gamma.u = 0.2,
   gamma.v = 0.2,
   arrow.angle = 25,
   arrow.length = 0.6,
-  L = 100,
+  min.L = 2,
+  L = 50,
   color.extern = NULL,
-  res = 1,
-  pt.size = 6,
+  res = 2,
+  pt.size = 3,
   pt.alpha = 0.8,
+  S = 10,
+  jitter = 1,
   skip = 2.5,
   xwrap = NULL,
   ywrap = NULL
 )
 }
+\arguments{
+\item{VF}{Data.frame estimated bei the SPATAwrappers::runVectorFields function}
+
+\item{color_stream}{Color of the stream lines}
+
+\item{n}{optional numeric indicating the number of points to draw in the x and y direction (replaces skip if not NULL)}
+
+\item{dt}{optional numeric size "timestep" for integration}
+
+\item{grid}{The grid size for estimation}
+
+\item{gamma.u, gamma.v}{Gamma for stream estimation}
+
+\item{arrow.angle}{Angle for arrows}
+
+\item{min.L}{minimum length of segments to show}
+
+\item{L}{typical length of a streamline in x and y units}
+
+\item{color.extern}{Add extra external colors (the colname of the external numeric feature, needs to be in VF data.frame)}
+
+\item{res}{resolution parameter (higher numbers increases the resolution)}
+
+\item{pt.size}{Numeric pointsize}
+
+\item{pt.alpha}{Numeric Alpha of points}
+
+\item{S}{optional numeric number of timesteps for integration}
+
+\item{jitter}{parameters passed to grid::arrow}
+
+\item{skip}{numeric specifying number of gridpoints not to draw in the x and y direction}
+
+\item{xwrap, ywrap}{vector of length two used to wrap the circular dimension.}
+}
 \value{
 
 }
 \description{
-plotStreamlines
+Plot the estimated vectorfields as streamlines using the metR package
 }
 \examples{
 

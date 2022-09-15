@@ -750,8 +750,9 @@ getSubColors <- function(tab,
       out %>% 
       dplyr::filter(!!sym(class)==class_unique[i])
     a <- nrow(x)
-    x <- x %>% 
-      dplyr::mutate(colors=colorRampPalette(color=c(into,color_L1[i]))(a+add_n)[c(1+add_n):c(a+add_n)] %>% rev() )
+    x <- 
+      x %>% 
+      dplyr::mutate(colors=c(colorRampPalette(color=c(into,color_L1[i]))(a+add_n)[c(1+add_n):c(a+add_n)] %>% rev()) )
   })
   
   all <- out %>% dplyr::pull(!!sym(subclass)) %>% unique()
@@ -770,9 +771,5 @@ getSubColors <- function(tab,
   return(out_4)
   
 }
-
-
-
-
 
 

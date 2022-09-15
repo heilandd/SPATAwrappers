@@ -100,138 +100,192 @@ plotJuxtapositionSPATA <- function(object,
 
 #' @title  plotStreamlines
 #' @author Dieter Henrik Heiland
-#' @description plotStreamlines
+#' @description Plot the estimated vectorfields as streamlines using the metR package
+#' @param VF Data.frame estimated bei the SPATAwrappers::runVectorFields function
+#' @param L typical length of a streamline in x and y units
+#' @param min.L minimum length of segments to show
+#' @param res resolution parameter (higher numbers increases the resolution)
+#' @param S optional numeric number of timesteps for integration
+#' @param dt optional numeric size "timestep" for integration
+#' @param xwrap,ywrap vector of length two used to wrap the circular dimension.
+#' @param skip numeric specifying number of gridpoints not to draw in the x and y direction
+#' @param n optional numeric indicating the number of points to draw in the x and y direction (replaces skip if not NULL)
+#' @param jitter parameters passed to grid::arrow
+#' @param color_stream Color of the stream lines
+#' @param grid The grid size for estimation
+#' @param gamma.u,gamma.v Gamma for stream estimation
+#' @param arrow.angle Numeric length of arrows
+#' @param arrow.angle Angle for arrows
+#' @param color.extern Add extra external colors (the colname of the external numeric feature, needs to be in VF data.frame)
+#' @param pt.size Numeric pointsize
+#' @param pt.alpha Numeric Alpha of points
 #' @inherit 
 #' @return 
 #' @examples 
 #' 
 #' @export
-plotStreamlines <- function(VF,
-                            parameter,
-                            size.arrow=1,
-                            surface=T,
-                            grid=c(50,50),
-                            gamma.u=0.2,
-                            gamma.v=0.2,
-                            arrow.angle=25,
-                            arrow.length=0.6,
-                            L=100,
-                            color.extern=NULL,
-                            res=1,
-                            pt.size=6,
-                            pt.alpha=0.8,
-                            skip=2.5,
-                            xwrap=NULL,
-                            ywrap=NULL){
-  
+plotStreamlines <- function (VF, 
+                             features, 
+                             display.image=T,
+                             size.arrow = 1.5, 
+                             surface = T, 
+                             color_stream="black",
+                             n=NULL,
+                             dt=NULL,
+                             grid = c(50, 50), 
+                             gamma.u = 0.2, 
+                             gamma.v = 0.2, 
+                             arrow.angle = 25, 
+                             arrow.length = 0.6,
+                             min.L=2 ,
+                             L = 50, 
+                             color.extern = NULL, 
+                             res = 2, 
+                             pt.size = 3, 
+                             pt.alpha = 0.8, 
+                             S=10, 
+                             jitter=1,
+                             skip = 2.5, 
+                             xwrap = NULL, 
+                             ywrap = NULL) 
+{
+  parameter <- features
   color.points <- parameter
-  if(!is.null(color.extern)){color.points <- color.extern }
-  
-  VF <- 
-    VF %>% 
-    dplyr::select(x,y,{{parameter}},{{color.points}}, t.x, t.y) %>% 
-    dplyr::rename("parameter":=!!sym(parameter))
-  
-  drifter.split.sf <-  
-    VF %>% 
-    sf::st_as_sf(coords = c("x", "y"))
-  drifter.grid <-  drifter.split.sf %>% 
-    sf::st_make_grid(n = grid)%>%
+  if (!is.null(color.extern)) {
+    color.points <- color.extern
+  }
+  VF <- VF %>% dplyr::select(x, y, {
+    {
+      parameter
+    }
+  }, {
+    {
+      color.points
+    }
+  }, t.x, t.y) %>% dplyr::rename(`:=`("parameter", !!sym(parameter)))
+  drifter.split.sf <- VF %>% sf::st_as_sf(coords = c("x", "y"))
+  drifter.grid <- drifter.split.sf %>% sf::st_make_grid(n = grid) %>% 
     sf::st_sf()
-  drifter.split.sf.se <- 
-    drifter.split.sf %>% 
-    dplyr::filter(parameter!=0)
-  drifter.gridded <-  
-    drifter.grid %>% 
-    mutate(id = 1:n(), contained = lapply(sf::st_contains(sf::st_sf(geometry),drifter.split.sf.se),identity),
-           obs = sapply(contained, length),
-           u = sapply(contained, function(x) {median(drifter.split.sf.se[x,]$t.x, na.rm = TRUE)}),
-           v = sapply(contained, function(x) {median(drifter.split.sf.se[x,]$t.y, na.rm = TRUE)})) 
-  drifter.gridded = drifter.gridded %>% dplyr::select(obs, u, v) %>% na.omit()
-  
-  coordinates <-  
-    drifter.gridded %>% 
-    sf::st_centroid() %>% 
-    sf::st_coordinates() %>% 
-    tibble::as_tibble() %>% 
-    dplyr::rename(x = X, y = Y)
+  drifter.split.sf.se <- drifter.split.sf %>% dplyr::filter(parameter != 
+                                                              0)
+  drifter.gridded <- drifter.grid %>% mutate(id = 1:n(), contained = lapply(sf::st_contains(sf::st_sf(geometry), 
+                                                                                            drifter.split.sf.se), identity), obs = sapply(contained, 
+                                                                                                                                          length), u = sapply(contained, function(x) {
+                                                                                                                                            median(drifter.split.sf.se[x, ]$t.x, na.rm = TRUE)
+                                                                                                                                          }), v = sapply(contained, function(x) {
+                                                                                                                                            median(drifter.split.sf.se[x, ]$t.y, na.rm = TRUE)
+                                                                                                                                          }))
+  drifter.gridded = drifter.gridded %>% dplyr::select(obs, 
+                                                      u, v) %>% na.omit()
+  coordinates <- drifter.gridded %>% sf::st_centroid() %>% 
+    sf::st_coordinates() %>% tibble::as_tibble() %>% dplyr::rename(x = X, 
+                                                                   y = Y)
   sf::st_geometry(drifter.gridded) = NULL
-  
-  current.gridded.se <-  
-    coordinates %>% 
-    dplyr::bind_cols(drifter.gridded) %>% 
+  current.gridded.se <- coordinates %>% dplyr::bind_cols(drifter.gridded) %>% 
     dplyr::mutate(season = "SE")
-  
-  drifter.current.gridded <-  
-    current.gridded.se %>% 
-    dplyr::bind_rows(current.gridded.se)
-  
-  drf.se <-  
-    drifter.current.gridded %>% 
-    dplyr::filter(season == "SE")
-  
-  u.se <-  oce::interpBarnes(x = drf.se$x, y = drf.se$y, z = drf.se$u, gamma=gamma.u)
-  
+  drifter.current.gridded <- current.gridded.se %>% dplyr::bind_rows(current.gridded.se)
+  drf.se <- drifter.current.gridded %>% dplyr::filter(season == 
+                                                        "SE")
+  u.se <- oce::interpBarnes(x = drf.se$x, y = drf.se$y, z = drf.se$u, 
+                            gamma = gamma.u)
   dimension = data.frame(lon = u.se$xg, u.se$zg) %>% dim()
-  
-  u.tb <-  
-    data.frame(lon = u.se$xg, u.se$zg) %>% 
-    tidyr::gather(key = "lata", value = "u", 2:dimension[2]) %>% 
-    dplyr::mutate(lat = rep(u.se$yg, each = dimension[1])) %>% 
-    dplyr::select(lon,lat, u) %>% 
+  u.tb <- data.frame(lon = u.se$xg, u.se$zg) %>% tidyr::gather(key = "lata", 
+                                                               value = "u", 2:dimension[2]) %>% dplyr::mutate(lat = rep(u.se$yg, 
+                                                                                                                        each = dimension[1])) %>% dplyr::select(lon, lat, u) %>% 
     tibble::as_tibble()
-  
-  v.se = oce::interpBarnes(x = drf.se$x, y = drf.se$y, z = drf.se$v,gamma=gamma.v)
-  
-  v.tb = data.frame(lon = v.se$xg, v.se$zg) %>% 
-    tidyr::gather(key = "lata", value = "v", 2:dimension[2]) %>% 
-    dplyr::mutate(lat = rep(v.se$yg, each = dimension[1])) %>% 
-    dplyr::select(lon,lat, v) %>% 
+  v.se = oce::interpBarnes(x = drf.se$x, y = drf.se$y, z = drf.se$v, 
+                           gamma = gamma.v)
+  v.tb = data.frame(lon = v.se$xg, v.se$zg) %>% tidyr::gather(key = "lata", 
+                                                              value = "v", 2:dimension[2]) %>% dplyr::mutate(lat = rep(v.se$yg, 
+                                                                                                                       each = dimension[1])) %>% dplyr::select(lon, lat, v) %>% 
     tibble::as_tibble()
+  uv.se <- u.tb %>% dplyr::bind_cols(v.tb %>% dplyr::select(v)) %>% 
+    dplyr::mutate(vel = sqrt(u^2 + v^2))
   
-  uv.se <-  
-    u.tb %>% 
-    dplyr::bind_cols(v.tb %>% dplyr::select(v)) %>% 
-    dplyr::mutate(vel = sqrt(u^2+v^2))
-  
-  
-  
-  if(color.points %>% class()=="factor"){
-    p= ggplot2::ggplot()+ggplot2::theme_void()
-    if(surface==T){
-    p=p+geom_point(data=VF, mapping=aes(x,y, color=.data[[color.points]]), size=pt.size, alpha=pt.alpha)
-    }
-    p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
-                              size=size.arrow,
-                              arrow.length = arrow.length,
-                              arrow.angle = arrow.angle,
-                              arrow.type = "closed",
-                              L = L, res =res,skip=skip,xwrap =xwrap,ywrap = ywrap,
-                              lineend = "round")
+  if (color.points %>% class() == "factor") {
     
-  }else{
+    if(display.image==T){p=SPATA2::plotSurface(object, pt_alpha = 0)}else{p = ggplot2::ggplot() + ggplot2::theme_void()+ggplot2::coord_fixed()}
     
-    p= ggplot2::ggplot()+ggplot2::theme_void()
-    if(surface==T){
-      if(color.points==parameter){ p=p+geom_point(data=VF, mapping=aes(x,y, color=parameter), size=pt.size, alpha=pt.alpha) }else{
-        p=p+geom_point(data=VF, mapping=aes(x,y, color=.data[[color.points]]), size=pt.size, alpha=pt.alpha)
-      }
-      
-      p=p+ggplot2::scale_color_viridis_c(guide = "none")
+    if (surface == T) {
+      p = p + geom_point(data = VF, mapping = aes(x, y, 
+                                                  color = .data[[color.points]]), size = pt.size, 
+                         alpha = pt.alpha)
     }
-    p=p+metR::geom_streamline(data = uv.se, aes(x = lon, y = lat, dx = u, dy = v),
-                              size=size.arrow,
-                              arrow.length = arrow.length,
-                              arrow.angle = arrow.angle,
-                              arrow.type = "closed",
-                              L = L, res =res,skip=skip,xwrap =xwrap,ywrap = ywrap,
-                              lineend = "round")
+    p = p + metR::geom_streamline(data = uv.se, aes(x = lon, 
+                                                    y = lat, dx = u, dy = v), size = size.arrow, arrow.length = arrow.length, 
+                                  arrow.angle = arrow.angle, arrow.type = "closed", 
+                                  L = L, res = res, skip = skip, xwrap = xwrap, ywrap = ywrap, 
+                                  lineend = "round")
   }
   
+  
+  else {
+    if(display.image==T){p=SPATA2::plotSurface(object, pt_alpha = 0)}else{p = ggplot2::ggplot() + ggplot2::theme_void()+ggplot2::coord_fixed()}
+    if (surface == T) {
+      if (color.points == parameter) {
+        p = p + geom_point(data = VF, mapping = aes(x, 
+                                                    y, color = parameter), size = pt.size, alpha = pt.alpha)
+      }
+      else {
+        p = p + geom_point(data = VF, mapping = aes(x, 
+                                                    y, color = .data[[color.points]]), size = pt.size, 
+                           alpha = pt.alpha)
+      }
+      p = p + 
+        scale_color_gradientn(colors =colorRampPalette(rev(RColorBrewer::brewer.pal(9,"PuOr")))(50))
+    }
+    p = p + metR::geom_streamline(data = uv.se, aes(x = lon, 
+                                                    y = lat, 
+                                                    dx = u, 
+                                                    dy = v,
+                                                    size = sqrt(..dx..^2 + ..dy..^2),
+                                                    alpha = ..step..,
+                                                    #color = ..step..
+    ),
+    n=n,
+    dt=dt,
+    color=color_stream,
+    arrow = NULL,
+    jitter=jitter,
+    min.L=min.L,
+    S=S,
+    arrow.length = arrow.length, 
+    arrow.angle = arrow.angle, 
+    arrow.type = "closed", 
+    L = L, 
+    res = res, 
+    skip = skip, 
+    xwrap = xwrap, 
+    ywrap = ywrap, 
+    lineend = "round")+
+      scale_size(range = c(0, 1.5)) +
+      scale_alpha(guide = "none")+
+      metR::geom_streamline(data = uv.se, aes(x = lon, 
+                                              y = lat, 
+                                              dx = u, 
+                                              dy = v),
+                            size=0,
+                            dt=dt,
+                            color=color_stream,
+                            jitter=jitter,
+                            min.L=min.L,
+                            n=n,
+                            S=S,
+                            arrow.length = arrow.length, 
+                            arrow.angle = arrow.angle, 
+                            arrow.type = "closed", 
+                            L = L, 
+                            res = res, 
+                            skip = skip, 
+                            xwrap = xwrap, 
+                            ywrap = ywrap, 
+                            lineend = "round")
+  }
   return(p)
-  
-  
 }
+
+
+
 
 #' @title  plotVectorFields
 #' @author Dieter Henrik Heiland
@@ -1462,10 +1516,10 @@ plotSurfaceMixed <- function(object,
   
   df <- 
     df %>% 
-    dplyr::mutate(cell.type=purr::map(.x=1:nrow(df), .f=function(i){Mixed[which.max(df[i,Mixed])]}) %>% unlist(),
-                  cell.type.score=purr::map(.x=1:nrow(df), .f=function(i){df[i,Mixed[which.max(df[i,Mixed])]]}) %>% unlist())
+    dplyr::mutate(cell.type=purrr::map(.x=1:nrow(df), .f=function(i){Mixed[which.max(df[i,Mixed])]}) %>% unlist(),
+                  cell.type.score=purrr::map(.x=1:nrow(df), .f=function(i){df[i,Mixed[which.max(df[i,Mixed])]]}) %>% unlist())
   
-  df <- purr::map_dfr(.x=1:length(unique(df$cell.type)), .f=function(i){
+  df <- purrr::map_dfr(.x=1:length(unique(df$cell.type)), .f=function(i){
     
     cell.types.call <- as.character(unique(df$cell.type))
     #print(i)

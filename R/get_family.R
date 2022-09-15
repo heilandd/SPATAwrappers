@@ -250,13 +250,14 @@ getAdjacentSpots <- function(object, export.object=T, workers=16, ram=40){
   names(map.adj) <- SPATA2::getBarcodes(object)
   
   
-  if(export.object!=T){
-    object <- map.adj
-  }else{
+  if(export.object==T){
     object@spatial[[SPATA2::getSampleNames(object)]]$AdjacentSpots <- map.adj
+    
+  }else{
+    object <- map.adj
   }
   
-  
+  return(object)
 }
 
 

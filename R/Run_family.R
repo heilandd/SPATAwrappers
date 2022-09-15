@@ -526,6 +526,104 @@ runSpatialRegression <- function (object, features, model, smooth = F, normalize
 
 
 
+#' @title  runVectorFields
+#' @author Dieter Henrik Heiland
+#' @description The function computed teh vector direction of gene expression gradients along a given feature
+#' @param object SPATA2 object
+#' @param features Character value. Can be a numeric feature from the feature data, a gene or a pathway
+#' @param dist.spot The distance for compute the vector (min is the distance of spots)
+#' @param run.mcor Logical, if TRUE use feature multicore
+#' @param workers Cores to use for multicore
+#' @param ram Numeric, GB of ram storage used for multicore
+#' @param smooth Logical. If TRUE, a loess fit is used to smooth the values.
+#' @param smooth_span Numeric value. Controls the degree of smoothing. Given to argument span of stats::loess().
+#' @param normalize Normalize Values 
+#' @param cut_off Numeric, cut off low expression spots
+#' @inherit 
+#' @return 
+#' @examples 
+#' @export
+runVectorFields <- function(object, 
+                            features,
+                            cut_off=NULL,
+                            normalize=T,
+                            smooth=T,
+                            smooth_span=NULL,
+                            dist.spot=10, 
+                            run.mcor=T, 
+                            workers=8,
+                            ram=50){
+  
+  
+  # Get the data:
+  df <- SPATA2::hlpr_join_with_aes(object, 
+                                   df = SPATA2::getCoordsDf(object), 
+                                   color_by = features, 
+                                   normalize = normalize, 
+                                   smooth = smooth,
+                                   smooth_span=smooth_span)
+  
+  if(!is.null(cut_off)){df[df[,features]<cut_off, features]=0}
+  
+  
+  # Prepare data ------------------------------------------------------------
+  NN.file <- SPATAwrappers::getSurroundedSpots(object)
+  
+  
+  if(run.mcor==T){
+    base::options(future.fork.enable = TRUE)
+    future::plan("multisession", workers = workers)
+    future::supportsMulticore()
+    base::options(future.globals.maxSize = ram *100* 1024^2)
+    message("... Run multicore ... ")
+    
+  }
+  
+  if(dist.spot<min(NN.file %>% filter(distance!=0) %>% pull(distance))){
+    dist.spot <-min(NN.file %>% filter(distance!=0) %>% pull(distance))
+    message(paste0("The distance was adopted for the minimal distance: ",dist.spot, "px"))}
+  
+  
+  VF <- furrr::future_map(.x=1:nrow(df), .f=function(i){
+    
+    #Spot Def.
+    bc <- df[i, c("barcodes")]
+    cc <- df[i, c("x", "y")]
+    #Neighbour Spots
+    NN <- 
+      NN.file %>% 
+      dplyr::filter(xo < cc$x+dist.spot & xo > cc$x-dist.spot) %>% 
+      dplyr::filter(yo < cc$y+dist.spot & yo > cc$y-dist.spot) %>%
+      dplyr::pull(bc_destination)
+    
+    #Filter input DF
+    NN.df <- df %>% dplyr::filter(barcodes %in% NN) %>% as.data.frame()
+    parameter <- features
+    
+    #Create Vector
+    V <- -c(as.numeric(cc) - c(NN.df$x[which.max(NN.df[,parameter])], NN.df$y[which.max(NN.df[,parameter])]))
+    
+    if(length(V)==0){out <- data.frame(barcodes=bc, t.x=0, t.y=0)}else{out <- data.frame(barcodes=bc, t.x=V[1], t.y=V[2])}
+    
+    return(out)
+    
+    
+    
+  }, .progress = T) %>% 
+    do.call(rbind, .) %>% 
+    as.data.frame()
+  
+  
+  out <- cbind(df, VF)
+  out[is.na(out)] <- 0
+  
+  return(out)
+  
+  
+  
+  
+}
+
 
 
 
