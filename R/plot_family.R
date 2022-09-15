@@ -1505,12 +1505,13 @@ plotSurfaceMixed <- function(object,
                              Mixed, 
                              mixed.colors, 
                              smooth=T,
+                             normalize=F,
                              smooth_span=NULL,
                              pt_size=2.5,
                              pt_alpha=T,
                              display_image=F){
   
-  df <- SPATA2::joinWith(object, features=Mixed, normalize = T, smooth = smooth, smooth_span = smooth_span)
+  df <- SPATA2::joinWith(object, features=Mixed, normalize = normalize, smooth = smooth, smooth_span = smooth_span)
   
   #Annotate celltype to spot
   

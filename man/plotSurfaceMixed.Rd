@@ -9,6 +9,7 @@ plotSurfaceMixed(
   Mixed,
   mixed.colors,
   smooth = T,
+  normalize = F,
   smooth_span = NULL,
   pt_size = 2.5,
   pt_alpha = T,
