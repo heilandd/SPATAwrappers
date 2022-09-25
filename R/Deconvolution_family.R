@@ -280,6 +280,44 @@ getSingleCellDeconv <- function(object,
   
 }
 
+
+#' @title  Run single-cell mapping
+#' @author Dieter Henrik Heiland
+#' @description Mapping the output of "getSingleCellDeconv()"to the best matching cell from the reference dataset
+#' @return 
+#' @examples 
+#' @export
+DownScaleSeurat <- function(seurat, 
+                            maintain_var="cell_states", 
+                            max=10000, 
+                            only_var=T,
+                            factor=5,
+                            n_feature=3000){
+  
+  
+  tab_quant <- 
+    seurat@meta.data %>% 
+    as.data.frame() %>% 
+    pull(!!sym(maintain_var)) %>% 
+    table() %>% 
+    as.data.frame() %>% 
+    mutate(nr=Freq/min(Freq)) %>% 
+    mutate(cells = round(nr*factor)) %>% 
+    mutate(cells = ifelse(cells>max, max, cells)) %>% 
+    dplyr::rename("cluster":=.) %>% 
+    dplyr::select(cluster,cells) %>% 
+    mutate(cluster=as.character(cluster))
+  
+  cells <- map(.x=1:nrow(tab_quant), .f=function(i){
+    sample(rownames(seurat@meta.data[seurat@meta.data[,maintain_var]==tab_quant$cluster[i], ]),tab_quant$cells[i])
+  }) %>% unlist()
+  
+  seurat.out <- subset(seurat, cells=cells)
+  seurat.out <- Seurat::SCTransform(seurat.out, return.only.var.genes=only_var, variable.features.n = n_feature)
+  
+}
+
+
 #' @title  Run single-cell mapping
 #' @author Dieter Henrik Heiland
 #' @description Mapping the output of "getSingleCellDeconv()"to the best matching cell from the reference dataset
