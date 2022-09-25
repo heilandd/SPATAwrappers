@@ -259,7 +259,8 @@ getSingleCellDeconv <- function(object,
                                         scores <- scores[1:i-1, ]
                                         
                                         if(sum(scores$cells)>nr.cells){
-                                          scores$cells[nrow(scores)]= scores$cells[nrow(scores)]-1
+                                          neg <- sum(scores$cells)-nr.cells
+                                          scores$cells[nrow(scores)]= scores$cells[nrow(scores)]-neg
                                         }
                                         
                                         cells_add <- map(.x=1:nrow(scores),.f=function(i){
