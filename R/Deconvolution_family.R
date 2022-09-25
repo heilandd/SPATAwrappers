@@ -169,14 +169,15 @@ getSingleCellDeconv <- function(object,
                                                                     point.y=sc_dat$y)
                                         
                                         cells <- sc_dat[nuc==1, ]$Cell
-                                        cells_in_spot<-sum(nuc)
-                                        return <- 
-                                          data.frame(barcodes=grid.plot$barcodes[x], 
-                                                     Nr_of_cells=cells_in_spot,
-                                                     cells=cells)
                                         
-                                        
-                                        
+                                        if(is_empty(cells)){
+                                          return <- data.frame(barcodes = grid.plot$barcodes[x], 
+                                                               Nr_of_cells = 0, cells = NA)
+                                        }else{
+                                          cells_in_spot <- sum(nuc)
+                                          return <- data.frame(barcodes = grid.plot$barcodes[x], 
+                                                               Nr_of_cells = cells_in_spot, cells = cells)
+                                        }
                                         return(return)
                                         
                                         
@@ -273,7 +274,7 @@ getSingleCellDeconv <- function(object,
   
   #Align Coords
   
-  Cell_types <- Cell_types %>% dplyr::left_join(., sc_dat %>% rename("cells":=Cell), by="cells")
+  Cell_types <- Cell_types %>% dplyr::left_join(., sc_dat %>% dplyr::rename("cells":=Cell), by="cells")
   
   return(Cell_types)
   
